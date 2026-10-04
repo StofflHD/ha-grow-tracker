@@ -205,6 +205,8 @@ class GrowTrackerPanel extends HTMLElement {
     this._hass = hass;
     if (!this._built) this._build();
     this._menuButton.hass = hass;
+    // Native Auswahllisten, Datumsfelder und Kalender passend zum HA-Theme zeichnen
+    this.style.colorScheme = hass.themes?.darkMode ? "dark" : "light";
     if (!this._unsub) this._subscribe();
     if (languageChanged) this._renderAll();
   }
@@ -937,11 +939,16 @@ const STYLES = `
     font: inherit;
     font-size: 14px;
     color: var(--primary-text-color);
-    background: var(--input-fill-color, var(--secondary-background-color));
+    /* Deckende Theme-Farbe (--input-fill-color kann halbtransparent sein) */
+    background-color: var(--secondary-background-color);
     border: 1px solid var(--divider-color);
     border-radius: 6px;
     padding: 8px;
     box-sizing: border-box;
+  }
+  option, optgroup {
+    background-color: var(--card-background-color, var(--primary-background-color));
+    color: var(--primary-text-color);
   }
   label.check input { width: auto; }
   textarea { resize: vertical; width: 100%; }

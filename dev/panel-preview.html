@@ -84,6 +84,7 @@
   window.serviceCalls = [];
   const hass = {
     language: lang,
+    themes: { darkMode: params.get("theme") === "dark" },
     user: { is_admin: params.get("admin") !== "0" },
     async callWS(msg) {
       window.serviceCalls.push(msg);
