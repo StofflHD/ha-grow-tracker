@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from collections.abc import Generator
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
 from custom_components.grow_tracker.const import PANEL_URL_PATH
+from homeassistant.config_entries import ConfigEntryDisabler
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 
 from .conftest import LOC_FLOWER, PLANT_MOTHER, PLANT_SEED
@@ -64,7 +68,8 @@ async def test_ws_not_loaded(hass: HomeAssistant, hass_ws_client: WebSocketGener
     assert event == {"loaded": False, "locations": [], "plants": []}
 
 
-async def test_panel_registration(hass: HomeAssistant, mock_entry: MockConfigEntry) -> None:
+@pytest.fixture
+def panel_mocks(hass: HomeAssistant) -> Generator[tuple[AsyncMock, MagicMock]]:
     hass.config.components.add("frontend")
     with (
         patch(
@@ -73,16 +78,55 @@ async def test_panel_registration(hass: HomeAssistant, mock_entry: MockConfigEnt
         ) as register,
         patch("custom_components.grow_tracker.panel.frontend.async_remove_panel") as remove,
     ):
-        mock_entry.add_to_hass(hass)
-        assert await hass.config_entries.async_setup(mock_entry.entry_id)
-        await hass.async_block_till_done()
+        yield register, remove
 
-        register.assert_awaited_once()
-        kwargs = register.await_args.kwargs
-        assert kwargs["frontend_url_path"] == PANEL_URL_PATH
-        assert kwargs["webcomponent_name"] == "grow-tracker-panel"
-        assert kwargs["sidebar_title"] == "Grow Tracker"
-        assert kwargs["module_url"].startswith("/grow_tracker_static/grow-tracker-panel.js?v=")
 
-        assert await hass.config_entries.async_unload(mock_entry.entry_id)
-        remove.assert_called_once_with(hass, PANEL_URL_PATH, warn_if_unknown=False)
+async def test_panel_registration(
+    hass: HomeAssistant, panel_mocks: tuple[AsyncMock, MagicMock], setup_entry: MockConfigEntry
+) -> None:
+    register, remove = panel_mocks
+    register.assert_awaited_once()
+    kwargs = register.await_args.kwargs
+    assert kwargs["frontend_url_path"] == PANEL_URL_PATH
+    assert kwargs["webcomponent_name"] == "grow-tracker-panel"
+    assert kwargs["sidebar_title"] == "Grow Tracker"
+    assert kwargs["module_url"].startswith("/grow_tracker_static/grow-tracker-panel.js?v=")
+
+    # Löschen entfernt das Panel
+    assert await hass.config_entries.async_remove(setup_entry.entry_id)
+    remove.assert_called_once_with(hass, PANEL_URL_PATH, warn_if_unknown=False)
+
+
+async def test_panel_survives_reload(
+    hass: HomeAssistant, panel_mocks: tuple[AsyncMock, MagicMock], setup_entry: MockConfigEntry
+) -> None:
+    """Stecklinge anlegen lädt den Eintrag neu – das Panel darf nicht verschwinden."""
+    register, remove = panel_mocks
+    phase_entity = er.async_get(hass).async_get_entity_id(
+        "select", "grow_tracker", f"{PLANT_MOTHER}_phase"
+    )
+    await hass.services.async_call(
+        "grow_tracker",
+        "take_cuttings",
+        {"entity_id": phase_entity, "count": 2, "create_plants": True},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert len(setup_entry.runtime_data.plants) == 4  # Reload ist passiert
+
+    assert await hass.config_entries.async_reload(setup_entry.entry_id)
+    await hass.async_block_till_done()
+
+    remove.assert_not_called()
+    register.assert_awaited_once()
+
+
+async def test_panel_removed_when_disabled(
+    hass: HomeAssistant, panel_mocks: tuple[AsyncMock, MagicMock], setup_entry: MockConfigEntry
+) -> None:
+    _, remove = panel_mocks
+    assert await hass.config_entries.async_set_disabled_by(
+        setup_entry.entry_id, ConfigEntryDisabler.USER
+    )
+    await hass.async_block_till_done()
+    remove.assert_called_once_with(hass, PANEL_URL_PATH, warn_if_unknown=False)

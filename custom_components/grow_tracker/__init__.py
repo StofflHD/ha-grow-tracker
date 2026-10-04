@@ -49,12 +49,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: GrowConfigEntry) -> bool
 
 async def async_unload_entry(hass: HomeAssistant, entry: GrowConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unloaded:
+    # Beim Reload bleibt das Panel bestehen, sonst landet man auf der Startseite
+    if unloaded and entry.disabled_by is not None:
         async_remove_panel(hass)
     return unloaded
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: GrowConfigEntry) -> None:
+    async_remove_panel(hass)
     await GrowHub(hass, entry).async_remove()
 
 

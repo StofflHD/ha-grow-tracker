@@ -20,6 +20,9 @@ from .const import (
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
+# Merkt sich, ob das Panel registriert ist – überlebt Reloads des Config Entries
+DATA_PANEL_REGISTERED = f"{DOMAIN}_panel_registered"
+
 
 async def async_register_static_path(hass: HomeAssistant) -> None:
     """Einmalig beim Start: JS-Dateien des Panels ausliefern."""
@@ -31,7 +34,7 @@ async def async_register_static_path(hass: HomeAssistant) -> None:
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:
-    if "frontend" not in hass.config.components:
+    if "frontend" not in hass.config.components or hass.data.get(DATA_PANEL_REGISTERED):
         return
     version = (await async_get_integration(hass, DOMAIN)).version
     await panel_custom.async_register_panel(
@@ -44,9 +47,15 @@ async def async_register_panel(hass: HomeAssistant) -> None:
         module_url=f"{STATIC_URL}/grow-tracker-panel.js?v={version}",
         require_admin=False,
     )
+    hass.data[DATA_PANEL_REGISTERED] = True
 
 
 def async_remove_panel(hass: HomeAssistant) -> None:
-    if "frontend" not in hass.config.components:
+    """Panel entfernen – nur beim Löschen/Deaktivieren, nicht beim Reload.
+
+    Würde das Panel bei jedem Reload kurz verschwinden, leitet das Frontend
+    Nutzer, die gerade im Panel sind, auf die Startseite um.
+    """
+    if not hass.data.pop(DATA_PANEL_REGISTERED, False):
         return
     frontend.async_remove_panel(hass, PANEL_URL_PATH, warn_if_unknown=False)
