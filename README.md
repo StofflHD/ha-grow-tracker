@@ -7,6 +7,7 @@ across all of your grow locations (tents, cabinets, chambers).
 
 ## Features
 
+- **Sidebar panel** with an overview of all locations and plants – change phases and locations, add notes and take cuttings right there
 - **Setup wizard** for your grow locations (mother cabinet, flower tents, propagation, drying …)
 - **Locations** with a type and an optional Home Assistant area – plants are moved to that area automatically
 - **Plants** with phase history: germination · rooting · vegetative · mother plant · flowering · drying · curing · finished
@@ -39,6 +40,17 @@ extract it to `/config/custom_components/grow_tracker/` and restart.
 
 Afterwards the integration page offers **Add location** and **Add plant**.
 Locations and plants can be edited (⋮ → *Reconfigure*) or deleted there.
+
+## Sidebar panel
+
+After setup, **Grow Tracker** appears in the Home Assistant sidebar:
+
+- One card per location with its plants, phase, week, day and – while flowering – a progress bar and harvest countdown
+- Click a plant to see its phase and location history, cuttings and notes
+- Change phase or location (with date), add notes and take cuttings directly in the panel
+- Updates live, also when changes come from automations
+
+You can hide or reorder the entry like any other sidebar item (long-press the sidebar title).
 
 ## Entities
 
@@ -141,6 +153,14 @@ python -m venv .venv
 ```
 
 Home Assistant does not support Windows – use Linux, macOS or WSL for running the tests.
+
+The sidebar panel can be previewed without Home Assistant using sample data:
+
+```bash
+python -m http.server 8765
+```
+
+Then open `http://localhost:8765/dev/panel-preview.html` (`?lang=en`, `?theme=dark`).
 
 ### Releasing
 1. Create a GitHub release with a tag like `v0.2.0`.

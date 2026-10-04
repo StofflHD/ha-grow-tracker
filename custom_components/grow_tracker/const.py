@@ -64,6 +64,16 @@ MAX_NOTES = 200
 
 # Ein Signal für die ganze Integration (Parameter: entry_id)
 SIGNAL_UPDATE = f"{DOMAIN}_update_{{}}"
+# Signal für das Seitenleisten-Panel (auch bei Setup/Unload)
+SIGNAL_PANEL_UPDATE = f"{DOMAIN}_panel_update"
+
+# Seitenleisten-Panel
+PANEL_URL_PATH = "grow-tracker"
+PANEL_COMPONENT = "grow-tracker-panel"
+PANEL_ICON = "mdi:cannabis"
+PANEL_TITLE = "Grow Tracker"
+STATIC_URL = "/grow_tracker_static"
+WS_SUBSCRIBE = f"{DOMAIN}/subscribe"
 
 EVENT_PHASE_CHANGED = f"{DOMAIN}_phase_changed"
 EVENT_LOCATION_CHANGED = f"{DOMAIN}_location_changed"

@@ -48,6 +48,7 @@ class GrowPlant:
         self.subentry = subentry
         self.subentry_id = subentry.subentry_id
         self.phase_entity_id: str | None = None
+        self.location_entity_id: str | None = None
         self.data: dict[str, Any] = data or self._initial_data()
         self.data.setdefault("notes", [])
         self.data.setdefault("cuttings", [])

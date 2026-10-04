@@ -132,6 +132,10 @@ class GrowLocationSelect(GrowSelectBase):
     def __init__(self, plant: GrowPlant) -> None:
         super().__init__(plant, "location")
 
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.plant.location_entity_id = self.entity_id
+
     @property
     def options(self) -> list[str]:
         return [loc.name for loc in self.hub.locations.values()]

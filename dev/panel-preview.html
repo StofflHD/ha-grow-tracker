@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grow Tracker Panel Preview</title>
+<style>
+  :root {
+    --primary-color: #03a9f4; --primary-background-color: #fafafa; --secondary-background-color: #f0f0f0;
+    --card-background-color: #fff; --primary-text-color: #212121; --secondary-text-color: #727272;
+    --divider-color: rgba(0,0,0,.12); --app-header-background-color: #03a9f4; --app-header-text-color: #fff;
+  }
+  body.dark {
+    --primary-background-color: #111; --secondary-background-color: #282828; --card-background-color: #1c1c1c;
+    --primary-text-color: #e1e1e1; --secondary-text-color: #9b9b9b; --divider-color: rgba(225,225,225,.12);
+    --app-header-background-color: #101e24;
+  }
+  body { margin: 0; }
+</style>
+</head>
+<body>
+<script>
+  // Stub für ha-menu-button
+  customElements.define("ha-menu-button", class extends HTMLElement {
+    connectedCallback() { this.innerHTML = '<span style="display:inline-block;width:40px;text-align:center;font-size:20px">☰</span>'; }
+  });
+
+  const params = new URLSearchParams(location.search);
+  if (params.get("theme") === "dark") document.body.classList.add("dark");
+  const lang = params.get("lang") || "de";
+
+  const plant = (o) => Object.assign({
+    strain: null, origin: "seed", mother_id: null, mother_name: null, flower_weeks: 9,
+    expected_harvest: null, days_to_harvest: null, cuttings_taken: 0, cuttings_log: [], children: [],
+    notes: [], location_history: [], phase_durations: {},
+    phase_entity_id: "select.x_phase", location_entity_id: "select.x_location",
+  }, o);
+
+  const data = {
+    loaded: true, entry_id: "e1", today: "2026-10-04",
+    locations: [
+      { id: "l1", name: "Mutterschrank", type: "mother" },
+      { id: "l2", name: "Blüte groß", type: "flowering" },
+      { id: "l3", name: "Blüte klein", type: "flowering" },
+      { id: "l4", name: "Blüte mini", type: "flowering" },
+    ],
+    plants: [
+      plant({ id: "p1", name: "Mutter Gelato", strain: "Gelato", phase: "mother", phase_start: "2026-05-01", grow_start: "2026-03-10",
+        days_total: 208, days_in_phase: 156, week_in_phase: 23, location_id: "l1", location_name: "Mutterschrank",
+        location_start: "2026-03-10", days_at_location: 208, cuttings_taken: 14, children: ["p3", "p4"],
+        history: [{ phase: "germination", start: "2026-03-10" }, { phase: "vegetative", start: "2026-03-17" }, { phase: "mother", start: "2026-05-01" }],
+        location_history: [{ location: "Mutterschrank", start: "2026-03-10" }],
+        cuttings_log: [{ date: "2026-08-20", count: 8 }, { date: "2026-09-28", count: 6 }],
+        notes: [{ date: "2026-09-28T18:30:00+02:00", phase: "mother", day: 202, text: "6 Stecklinge geschnitten, Mutter zurückgeschnitten" }] }),
+      plant({ id: "p2", name: "Northern Lights", strain: "Northern Lights Auto", phase: "flowering", phase_start: "2026-08-23", grow_start: "2026-07-01",
+        days_total: 95, days_in_phase: 42, week_in_phase: 7, location_id: "l2", location_name: "Blüte groß",
+        location_start: "2026-08-23", days_at_location: 42, expected_harvest: "2026-10-25", days_to_harvest: 21,
+        history: [{ phase: "germination", start: "2026-07-01" }, { phase: "vegetative", start: "2026-07-08" }, { phase: "flowering", start: "2026-08-23" }],
+        location_history: [{ location: "Mutterschrank", start: "2026-07-01" }, { location: "Blüte groß", start: "2026-08-23" }],
+        notes: [
+          { date: "2026-09-30T09:12:00+02:00", phase: "flowering", day: 91, text: "Trichome noch klar, EC 1.6" },
+          { date: "2026-09-10T20:00:00+02:00", phase: "flowering", day: 71, text: "Entlaubt <b>unten</b>" },
+        ] }),
+      plant({ id: "p3", name: "Mutter Gelato #1", strain: "Gelato", origin: "cutting", mother_id: "p1", mother_name: "Mutter Gelato",
+        phase: "flowering", phase_start: "2026-09-10", grow_start: "2026-08-20", days_total: 45, days_in_phase: 24, week_in_phase: 4,
+        location_id: "l2", location_name: "Blüte groß", location_start: "2026-09-10", days_at_location: 24,
+        expected_harvest: "2026-11-12", days_to_harvest: 39,
+        history: [{ phase: "rooting", start: "2026-08-20" }, { phase: "vegetative", start: "2026-09-01" }, { phase: "flowering", start: "2026-09-10" }],
+        location_history: [{ location: "Mutterschrank", start: "2026-08-20" }, { location: "Blüte groß", start: "2026-09-10" }] }),
+      plant({ id: "p4", name: "Mutter Gelato #2", strain: "Gelato", origin: "cutting", mother_id: "p1", mother_name: "Mutter Gelato",
+        phase: "vegetative", phase_start: "2026-09-01", grow_start: "2026-08-20", days_total: 45, days_in_phase: 33, week_in_phase: 5,
+        location_id: "l3", location_name: "Blüte klein", location_start: "2026-09-25", days_at_location: 9,
+        history: [{ phase: "rooting", start: "2026-08-20" }, { phase: "vegetative", start: "2026-09-01" }],
+        location_history: [{ location: "Mutterschrank", start: "2026-08-20" }, { location: "Blüte klein", start: "2026-09-25" }] }),
+      plant({ id: "p5", name: "Amnesia Haze", strain: "Amnesia Haze", phase: "drying", phase_start: "2026-09-29", grow_start: "2026-05-20",
+        days_total: 137, days_in_phase: 5, week_in_phase: 1, location_id: "l4", location_name: "Blüte mini",
+        location_start: "2026-07-01", days_at_location: 95,
+        history: [{ phase: "germination", start: "2026-05-20" }, { phase: "vegetative", start: "2026-05-27" }, { phase: "flowering", start: "2026-07-20" }, { phase: "drying", start: "2026-09-29" }],
+        location_history: [{ location: "Blüte mini", start: "2026-07-01" }] }),
+    ],
+  };
+
+  window.serviceCalls = [];
+  const hass = {
+    language: lang,
+    connection: {
+      subscribeMessage(cb, msg) {
+        window.__push = () => cb(JSON.parse(JSON.stringify(data)));
+        setTimeout(window.__push, 50);
+        return Promise.resolve(() => {});
+      },
+    },
+    async callService(domain, service, svcData) {
+      window.serviceCalls.push({ domain, service, svcData });
+      if (svcData.date === "2020-01-01") throw new Error("Datum liegt vor dem aktuellen Eintrag");
+      const p = data.plants.find((x) => x.phase_entity_id === svcData.entity_id && x.id === window.__sel);
+      if (service === "add_note" && p) {
+        p.notes.push({ date: new Date().toISOString(), phase: p.phase, day: p.days_total, text: svcData.note });
+      }
+      if (service === "set_phase" && p) { p.phase = svcData.phase; p.history.push({ phase: svcData.phase, start: svcData.date }); }
+      setTimeout(window.__push, 10);
+    },
+  };
+  // Eindeutige entity_ids
+  data.plants.forEach((p) => { p.phase_entity_id = `select.${p.id}_phase`; });
+</script>
+<script src="../custom_components/grow_tracker/frontend/grow-tracker-panel.js"></script>
+<script>
+  const el = document.createElement("grow-tracker-panel");
+  el.narrow = window.innerWidth < 870;
+  el.hass = hass;
+  document.body.appendChild(el);
+  window.__panel = el;
+</script>
+</body>
+</html>

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
@@ -9,6 +10,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 
 from .const import (
@@ -17,6 +19,7 @@ from .const import (
     DOMAIN,
     LOCATION_TYPE_OTHER,
     LOCATION_TYPE_PROPAGATION,
+    SIGNAL_PANEL_UPDATE,
     SIGNAL_UPDATE,
     STORAGE_KEY,
     STORAGE_VERSION,
@@ -81,6 +84,19 @@ class GrowHub:
     @callback
     def async_notify(self) -> None:
         async_dispatcher_send(self.hass, SIGNAL_UPDATE.format(self.entry.entry_id))
+        async_dispatcher_send(self.hass, SIGNAL_PANEL_UPDATE)
+
+    @callback
+    def async_start_midnight_updates(self) -> None:
+        """Tageszähler aller Entities und des Panels um Mitternacht aktualisieren."""
+
+        @callback
+        def _midnight(_now: datetime) -> None:
+            self.async_notify()
+
+        self.entry.async_on_unload(
+            async_track_time_change(self.hass, _midnight, hour=0, minute=0, second=5)
+        )
 
     async def async_remove(self) -> None:
         await self._store.async_remove()

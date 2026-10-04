@@ -1,7 +1,7 @@
 {
   "domain": "grow_tracker",
   "name": "Grow Tracker",
-  "after_dependencies": ["logbook"],
+  "after_dependencies": ["frontend", "http", "logbook", "panel_custom", "websocket_api"],
   "codeowners": ["@StofflHD"],
   "config_flow": true,
   "documentation": "https://github.com/StofflHD/ha-grow-tracker",
@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/StofflHD/ha-grow-tracker/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

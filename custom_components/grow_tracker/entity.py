@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
-from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.event import async_track_time_change
 
 from .const import DOMAIN, SIGNAL_UPDATE
 from .hub import GrowHub, GrowLocation
@@ -16,7 +12,7 @@ from .plant import GrowPlant
 
 
 class GrowEntity(Entity):
-    """Update bei jeder Datenänderung im Hub und um Mitternacht."""
+    """Update bei jeder Datenänderung im Hub (inkl. Mitternacht)."""
 
     _attr_has_entity_name = True
     _attr_should_poll = False
@@ -42,15 +38,6 @@ class GrowEntity(Entity):
                 self.async_write_ha_state,
             )
         )
-        self.async_on_remove(
-            async_track_time_change(
-                self.hass, self._handle_midnight, hour=0, minute=0, second=5
-            )
-        )
-
-    @callback
-    def _handle_midnight(self, _now: datetime) -> None:
-        self.async_write_ha_state()
 
 
 class PlantEntity(GrowEntity):
