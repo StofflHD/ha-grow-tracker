@@ -1,0 +1,196 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Grow Tracker einrichten",
+        "description": "Lege deine Anbauorte an, z. B. Mutterschrank, Blütezelt groß oder Anzuchtbox. Ein Name pro Zeile. Weitere Standorte kannst du später jederzeit hinzufügen.",
+        "data": {
+          "locations": "Standorte"
+        }
+      },
+      "location": {
+        "title": "Standort {current}/{total}: {name}",
+        "description": "Wofür wird **{name}** genutzt?",
+        "data": {
+          "location_type": "Art",
+          "area_id": "Bereich"
+        },
+        "data_description": {
+          "location_type": "Anzucht-Standorte werden als Ziel für neue Stecklinge vorgeschlagen.",
+          "area_id": "Pflanzen an diesem Standort werden automatisch diesem Bereich zugeordnet."
+        }
+      }
+    },
+    "error": {
+      "no_locations": "Bitte mindestens einen Standort angeben.",
+      "duplicate_name": "Jeder Standort braucht einen eindeutigen Namen."
+    },
+    "abort": {
+      "single_instance_allowed": "Grow Tracker ist bereits eingerichtet. Standorte und Pflanzen fügst du auf der Integrationsseite hinzu."
+    }
+  },
+  "config_subentries": {
+    "location": {
+      "entry_type": "Standort",
+      "initiate_flow": {
+        "user": "Standort hinzufügen"
+      },
+      "step": {
+        "user": {
+          "title": "Neuer Standort",
+          "data": {
+            "name": "Name",
+            "location_type": "Art",
+            "area_id": "Bereich"
+          },
+          "data_description": {
+            "area_id": "Pflanzen an diesem Standort werden automatisch diesem Bereich zugeordnet."
+          }
+        },
+        "reconfigure": {
+          "title": "Standort bearbeiten",
+          "data": {
+            "name": "Name",
+            "location_type": "Art",
+            "area_id": "Bereich"
+          }
+        }
+      },
+      "error": {
+        "duplicate_name": "Es gibt bereits einen Standort mit diesem Namen."
+      },
+      "abort": {
+        "reconfigure_successful": "Standort wurde aktualisiert."
+      }
+    },
+    "plant": {
+      "entry_type": "Pflanze",
+      "initiate_flow": {
+        "user": "Pflanze hinzufügen"
+      },
+      "step": {
+        "user": {
+          "title": "Neue Pflanze",
+          "data": {
+            "name": "Name",
+            "strain": "Sorte",
+            "mother": "Mutterpflanze (bei Stecklingen)",
+            "phase": "Aktuelle Phase",
+            "location": "Standort",
+            "start_date": "Beginn der aktuellen Phase",
+            "flower_weeks": "Erwartete Blütedauer (Wochen)"
+          },
+          "data_description": {
+            "strain": "Bei Stecklingen leer lassen, um die Sorte der Mutter zu übernehmen.",
+            "mother": "Leer lassen bei Pflanzen aus Samen.",
+            "phase": "Leer lassen: Keimung (Samen) bzw. Bewurzelung (Steckling).",
+            "start_date": "Leer lassen für heute."
+          }
+        },
+        "reconfigure": {
+          "title": "Pflanze bearbeiten",
+          "data": {
+            "name": "Name",
+            "strain": "Sorte",
+            "flower_weeks": "Erwartete Blütedauer (Wochen)"
+          }
+        }
+      },
+      "abort": {
+        "no_locations": "Lege zuerst einen Standort an.",
+        "not_loaded": "Grow Tracker ist nicht geladen.",
+        "reconfigure_successful": "Pflanze wurde aktualisiert."
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "phase": {
+        "name": "Phase",
+        "state": {
+          "germination": "Keimung",
+          "rooting": "Bewurzelung",
+          "vegetative": "Wachstum",
+          "mother": "Mutterpflanze",
+          "flowering": "Blüte",
+          "drying": "Trocknung",
+          "curing": "Curing",
+          "finished": "Abgeschlossen"
+        }
+      },
+      "location": {
+        "name": "Standort"
+      }
+    },
+    "sensor": {
+      "days_total": { "name": "Tage gesamt" },
+      "days_in_phase": { "name": "Tage in Phase" },
+      "week_in_phase": { "name": "Woche in Phase" },
+      "days_at_location": { "name": "Tage am Standort" },
+      "phase_start": { "name": "Phasenbeginn" },
+      "expected_harvest": { "name": "Voraussichtliche Ernte" },
+      "cuttings_taken": { "name": "Stecklinge geschnitten" },
+      "last_note": { "name": "Letzte Notiz" },
+      "plant_count": { "name": "Pflanzen" }
+    }
+  },
+  "selector": {
+    "phase": {
+      "options": {
+        "germination": "Keimung",
+        "rooting": "Bewurzelung",
+        "vegetative": "Wachstum",
+        "mother": "Mutterpflanze",
+        "flowering": "Blüte",
+        "drying": "Trocknung",
+        "curing": "Curing",
+        "finished": "Abgeschlossen"
+      }
+    },
+    "location_type": {
+      "options": {
+        "propagation": "Anzucht / Stecklinge",
+        "mother": "Mutterpflanzen",
+        "vegetative": "Wachstum",
+        "flowering": "Blüte",
+        "drying": "Trocknung",
+        "other": "Sonstiges"
+      }
+    }
+  },
+  "services": {
+    "set_phase": {
+      "name": "Phase setzen",
+      "description": "Wechselt in eine neue Phase oder korrigiert das Startdatum der aktuellen Phase.",
+      "fields": {
+        "phase": { "name": "Phase", "description": "Neue Phase." },
+        "date": { "name": "Datum", "description": "Beginn der Phase (Standard: heute)." }
+      }
+    },
+    "set_location": {
+      "name": "Standort ändern",
+      "description": "Stellt die Pflanze an einen anderen Standort um.",
+      "fields": {
+        "location": { "name": "Standort", "description": "Name des neuen Standorts." },
+        "date": { "name": "Datum", "description": "Datum des Umzugs (Standard: heute)." }
+      }
+    },
+    "take_cuttings": {
+      "name": "Stecklinge schneiden",
+      "description": "Protokolliert geschnittene Stecklinge einer Mutterpflanze und legt sie optional als neue Pflanzen an.",
+      "fields": {
+        "count": { "name": "Anzahl", "description": "Anzahl geschnittener Stecklinge." },
+        "date": { "name": "Datum", "description": "Schnittdatum (Standard: heute)." },
+        "create_plants": { "name": "Als Pflanzen anlegen", "description": "Für jeden Steckling eine eigene Pflanze anlegen (Phase Bewurzelung)." },
+        "location": { "name": "Standort", "description": "Name des Standorts für die neuen Stecklinge (Standard: erster Anzucht-Standort, sonst Standort der Mutter)." }
+      }
+    },
+    "add_note": {
+      "name": "Notiz hinzufügen",
+      "description": "Fügt einen Tagebucheintrag hinzu (z. B. Düngung, Training, Beobachtung).",
+      "fields": {
+        "note": { "name": "Notiz", "description": "Text des Eintrags." }
+      }
+    }
+  }
+}

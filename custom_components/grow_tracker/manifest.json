@@ -1,0 +1,14 @@
+{
+  "domain": "grow_tracker",
+  "name": "Grow Tracker",
+  "codeowners": ["@StofflHD"],
+  "config_flow": true,
+  "after_dependencies": ["logbook"],
+  "documentation": "https://github.com/StofflHD/ha-grow-tracker",
+  "integration_type": "hub",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/StofflHD/ha-grow-tracker/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.2.0"
+}

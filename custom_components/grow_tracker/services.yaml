@@ -1,0 +1,81 @@
+set_phase:
+  target:
+    entity:
+      integration: grow_tracker
+      domain: select
+  fields:
+    phase:
+      required: true
+      selector:
+        select:
+          translation_key: phase
+          options:
+            - germination
+            - rooting
+            - vegetative
+            - mother
+            - flowering
+            - drying
+            - curing
+            - finished
+    date:
+      required: false
+      selector:
+        date:
+
+set_location:
+  target:
+    entity:
+      integration: grow_tracker
+      domain: select
+  fields:
+    location:
+      required: true
+      example: "Blüte groß"
+      selector:
+        text:
+    date:
+      required: false
+      selector:
+        date:
+
+take_cuttings:
+  target:
+    entity:
+      integration: grow_tracker
+      domain: select
+  fields:
+    count:
+      required: true
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    date:
+      required: false
+      selector:
+        date:
+    create_plants:
+      required: false
+      default: false
+      selector:
+        boolean:
+    location:
+      required: false
+      example: "Anzucht"
+      selector:
+        text:
+
+add_note:
+  target:
+    entity:
+      integration: grow_tracker
+      domain: select
+  fields:
+    note:
+      required: true
+      selector:
+        text:
+          multiline: true

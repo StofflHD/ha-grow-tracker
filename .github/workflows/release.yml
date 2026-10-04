@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build release zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          jq --arg v "$VERSION" '.version = $v' custom_components/grow_tracker/manifest.json > manifest.tmp
+          mv manifest.tmp custom_components/grow_tracker/manifest.json
+
+      - name: Zip integration
+        run: |
+          cd custom_components/grow_tracker
+          zip -r "$GITHUB_WORKSPACE/grow_tracker.zip" . -x "__pycache__/*"
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" grow_tracker.zip --clobber

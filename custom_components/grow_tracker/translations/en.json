@@ -1,0 +1,196 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Grow Tracker",
+        "description": "Add your grow locations, e.g. mother cabinet, large flower tent or propagation box. One name per line. You can add more locations at any time.",
+        "data": {
+          "locations": "Locations"
+        }
+      },
+      "location": {
+        "title": "Location {current}/{total}: {name}",
+        "description": "What is **{name}** used for?",
+        "data": {
+          "location_type": "Type",
+          "area_id": "Area"
+        },
+        "data_description": {
+          "location_type": "Propagation locations are suggested as target for new cuttings.",
+          "area_id": "Plants at this location are automatically assigned to this area."
+        }
+      }
+    },
+    "error": {
+      "no_locations": "Please enter at least one location.",
+      "duplicate_name": "Every location needs a unique name."
+    },
+    "abort": {
+      "single_instance_allowed": "Grow Tracker is already set up. Add locations and plants on the integration page."
+    }
+  },
+  "config_subentries": {
+    "location": {
+      "entry_type": "Location",
+      "initiate_flow": {
+        "user": "Add location"
+      },
+      "step": {
+        "user": {
+          "title": "New location",
+          "data": {
+            "name": "Name",
+            "location_type": "Type",
+            "area_id": "Area"
+          },
+          "data_description": {
+            "area_id": "Plants at this location are automatically assigned to this area."
+          }
+        },
+        "reconfigure": {
+          "title": "Edit location",
+          "data": {
+            "name": "Name",
+            "location_type": "Type",
+            "area_id": "Area"
+          }
+        }
+      },
+      "error": {
+        "duplicate_name": "A location with this name already exists."
+      },
+      "abort": {
+        "reconfigure_successful": "Location updated."
+      }
+    },
+    "plant": {
+      "entry_type": "Plant",
+      "initiate_flow": {
+        "user": "Add plant"
+      },
+      "step": {
+        "user": {
+          "title": "New plant",
+          "data": {
+            "name": "Name",
+            "strain": "Strain",
+            "mother": "Mother plant (for cuttings)",
+            "phase": "Current phase",
+            "location": "Location",
+            "start_date": "Start of current phase",
+            "flower_weeks": "Expected flowering time (weeks)"
+          },
+          "data_description": {
+            "strain": "Leave empty for cuttings to inherit the mother's strain.",
+            "mother": "Leave empty for plants grown from seed.",
+            "phase": "Leave empty: germination (seed) or rooting (cutting).",
+            "start_date": "Leave empty for today."
+          }
+        },
+        "reconfigure": {
+          "title": "Edit plant",
+          "data": {
+            "name": "Name",
+            "strain": "Strain",
+            "flower_weeks": "Expected flowering time (weeks)"
+          }
+        }
+      },
+      "abort": {
+        "no_locations": "Add a location first.",
+        "not_loaded": "Grow Tracker is not loaded.",
+        "reconfigure_successful": "Plant updated."
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "phase": {
+        "name": "Phase",
+        "state": {
+          "germination": "Germination",
+          "rooting": "Rooting",
+          "vegetative": "Vegetative",
+          "mother": "Mother plant",
+          "flowering": "Flowering",
+          "drying": "Drying",
+          "curing": "Curing",
+          "finished": "Finished"
+        }
+      },
+      "location": {
+        "name": "Location"
+      }
+    },
+    "sensor": {
+      "days_total": { "name": "Days total" },
+      "days_in_phase": { "name": "Days in phase" },
+      "week_in_phase": { "name": "Week in phase" },
+      "days_at_location": { "name": "Days at location" },
+      "phase_start": { "name": "Phase start" },
+      "expected_harvest": { "name": "Expected harvest" },
+      "cuttings_taken": { "name": "Cuttings taken" },
+      "last_note": { "name": "Last note" },
+      "plant_count": { "name": "Plants" }
+    }
+  },
+  "selector": {
+    "phase": {
+      "options": {
+        "germination": "Germination",
+        "rooting": "Rooting",
+        "vegetative": "Vegetative",
+        "mother": "Mother plant",
+        "flowering": "Flowering",
+        "drying": "Drying",
+        "curing": "Curing",
+        "finished": "Finished"
+      }
+    },
+    "location_type": {
+      "options": {
+        "propagation": "Propagation / cuttings",
+        "mother": "Mother plants",
+        "vegetative": "Vegetative",
+        "flowering": "Flowering",
+        "drying": "Drying",
+        "other": "Other"
+      }
+    }
+  },
+  "services": {
+    "set_phase": {
+      "name": "Set phase",
+      "description": "Switch to a new phase or correct the start date of the current phase.",
+      "fields": {
+        "phase": { "name": "Phase", "description": "New phase." },
+        "date": { "name": "Date", "description": "Start of the phase (default: today)." }
+      }
+    },
+    "set_location": {
+      "name": "Set location",
+      "description": "Move the plant to another location.",
+      "fields": {
+        "location": { "name": "Location", "description": "Name of the new location." },
+        "date": { "name": "Date", "description": "Date of the move (default: today)." }
+      }
+    },
+    "take_cuttings": {
+      "name": "Take cuttings",
+      "description": "Log cuttings taken from a mother plant and optionally create them as new plants.",
+      "fields": {
+        "count": { "name": "Count", "description": "Number of cuttings taken." },
+        "date": { "name": "Date", "description": "Date taken (default: today)." },
+        "create_plants": { "name": "Create plants", "description": "Create a plant for every cutting (phase rooting)." },
+        "location": { "name": "Location", "description": "Location name for the new cuttings (default: first propagation location, otherwise the mother's location)." }
+      }
+    },
+    "add_note": {
+      "name": "Add note",
+      "description": "Add a diary entry (e.g. feeding, training, observation).",
+      "fields": {
+        "note": { "name": "Note", "description": "Entry text." }
+      }
+    }
+  }
+}
