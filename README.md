@@ -73,7 +73,7 @@ You can hide or reorder the entry like any other sidebar item (long-press the si
 | `sensor.<plant>_days_at_location` | Days at current location |
 | `sensor.<plant>_phase_start` | Start date of current phase |
 | `sensor.<plant>_expected_harvest` | Only while flowering: flowering start + expected weeks |
-| `sensor.<plant>_cuttings_taken` | Mother plants: total cuttings; attributes: log, tracked cuttings |
+| `sensor.<plant>_cuttings` | Mother plants: number of cuttings currently existing as plants; attributes: tracked cuttings, cuttings log, `taken_total` |
 | `sensor.<plant>_last_note` | Latest diary entry; attribute `notes` holds the last 20 |
 
 ## Actions

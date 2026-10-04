@@ -88,6 +88,7 @@ def _plant(plant: GrowPlant) -> dict[str, Any]:
         "history": plant.history,
         "phase_durations": plant.phase_durations(),
         "location_history": plant.location_history_named(),
+        "cuttings_count": len(plant.children()),
         "cuttings_taken": plant.cuttings_taken,
         "cuttings_log": plant.cuttings_log[-20:],
         "children": [child.subentry_id for child in plant.children()],

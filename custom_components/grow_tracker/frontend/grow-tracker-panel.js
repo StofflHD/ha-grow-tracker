@@ -66,8 +66,10 @@ const I18N = {
     phase_history: "Phase history",
     location_history: "Location history",
     notes: "Notes",
-    cuttings_log: "Cuttings",
-    tracked_cuttings: "Tracked cuttings",
+    cuttings_log: "Cuttings log",
+    tracked_cuttings: "Cuttings",
+    cutting_one: "1 cutting",
+    no_cuttings: "No cuttings at the moment",
     no_notes: "No notes yet",
     edit: "Edit plant",
     close: "Close",
@@ -76,7 +78,7 @@ const I18N = {
     delete_confirm: "Really delete “{name}”?",
     delete_warning: "Phase and location history, notes and the cuttings log will be lost. This cannot be undone.",
     delete_children_note: "Its {n} tracked cuttings are kept.",
-    delete_mother_note: "The cutting is also removed from the cuttings log of “{name}”.",
+    delete_mother_note: "The cutting is also removed from “{name}”.",
     cancel: "Cancel",
     delete_final: "Delete permanently",
     phases: {
@@ -138,8 +140,10 @@ const I18N = {
     phase_history: "Phasen-Historie",
     location_history: "Standort-Historie",
     notes: "Notizen",
-    cuttings_log: "Stecklinge",
-    tracked_cuttings: "Erfasste Stecklinge",
+    cuttings_log: "Schnitt-Protokoll",
+    tracked_cuttings: "Stecklinge",
+    cutting_one: "1 Steckling",
+    no_cuttings: "Aktuell keine Stecklinge",
     no_notes: "Noch keine Notizen",
     edit: "Pflanze bearbeiten",
     close: "Schließen",
@@ -148,7 +152,7 @@ const I18N = {
     delete_confirm: "„{name}“ wirklich löschen?",
     delete_warning: "Phasen- und Standort-Historie, Notizen und das Stecklings-Protokoll gehen verloren. Das lässt sich nicht rückgängig machen.",
     delete_children_note: "Die {n} erfassten Stecklinge bleiben erhalten.",
-    delete_mother_note: "Der Steckling wird auch aus dem Stecklings-Protokoll von „{name}“ entfernt.",
+    delete_mother_note: "Der Steckling wird auch bei „{name}“ ausgetragen.",
     cancel: "Abbrechen",
     delete_final: "Endgültig löschen",
     phases: {
@@ -451,8 +455,10 @@ class GrowTrackerPanel extends HTMLElement {
       extra = `
         <div class="progress"><div style="width:${pct}%"></div></div>
         <div class="secondary small">${esc(this._harvestText(p))}</div>`;
-    } else if (p.phase === "mother" && p.cuttings_taken) {
-      extra = `<div class="secondary small">✂ ${esc(this._t("cuttings", { n: p.cuttings_taken }))}</div>`;
+    } else if (p.phase === "mother" && p.cuttings_count) {
+      extra = `<div class="secondary small">✂ ${esc(
+        this._t(p.cuttings_count === 1 ? "cutting_one" : "cuttings", { n: p.cuttings_count })
+      )}</div>`;
     }
     return `
       <button class="plant" data-plant="${esc(p.id)}">
@@ -555,10 +561,11 @@ class GrowTrackerPanel extends HTMLElement {
             `<li><a class="link" data-plant="${esc(c.id)}">${esc(c.name)}</a>${this._phaseChip(c.phase)}</li>`
         )
         .join("");
+      // Zuerst die aktuell vorhandenen Stecklinge, darunter der Schnitt-Verlauf
       cuttings = `
-        <h3>${esc(this._t("cuttings_log"))} (${p.cuttings_taken})</h3>
-        <ul class="list">${log}</ul>
-        ${children ? `<h3>${esc(this._t("tracked_cuttings"))}</h3><ul class="list">${children}</ul>` : ""}`;
+        <h3>${esc(this._t("tracked_cuttings"))} (${p.cuttings_count})</h3>
+        <ul class="list">${children || `<li class="secondary">${esc(this._t("no_cuttings"))}</li>`}</ul>
+        ${log ? `<h3>${esc(this._t("cuttings_log"))}</h3><ul class="list">${log}</ul>` : ""}`;
     }
 
     this.shadowRoot.getElementById("dlg-info").innerHTML = `

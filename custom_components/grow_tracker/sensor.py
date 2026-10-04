@@ -39,6 +39,7 @@ def _harvest_attrs(plant: GrowPlant) -> dict[str, Any]:
 
 def _cuttings_attrs(plant: GrowPlant) -> dict[str, Any]:
     return {
+        "taken_total": plant.cuttings_taken,
         "log": list(reversed(plant.cuttings_log[-20:])),
         "tracked_cuttings": [
             {
@@ -99,9 +100,9 @@ PLANT_SENSORS: tuple[GrowSensorDescription, ...] = (
     GrowSensorDescription(
         key="cuttings_taken",
         icon="mdi:content-cut",
-        # TOTAL statt TOTAL_INCREASING: gelöschte Stecklinge verringern den Zähler
-        state_class=SensorStateClass.TOTAL,
-        value_fn=lambda p: p.cuttings_taken,
+        # Anzahl aktuell vorhandener Stecklinge (steigt und fällt)
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda p: len(p.children()),
         attrs_fn=_cuttings_attrs,
     ),
     GrowSensorDescription(

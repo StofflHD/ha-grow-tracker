@@ -84,6 +84,7 @@ async def test_ws_after_creating_cuttings(
     assert len(after_reload["plants"]) == 4
     mother = next(p for p in after_reload["plants"] if p["id"] == PLANT_MOTHER)
     assert len(mother["children"]) == 2
+    assert mother["cuttings_count"] == 2
     assert mother["phase_entity_id"] is not None
 
 

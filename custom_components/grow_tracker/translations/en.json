@@ -129,7 +129,7 @@
       "days_at_location": { "name": "Days at location" },
       "phase_start": { "name": "Phase start" },
       "expected_harvest": { "name": "Expected harvest" },
-      "cuttings_taken": { "name": "Cuttings taken" },
+      "cuttings_taken": { "name": "Cuttings" },
       "last_note": { "name": "Last note" },
       "plant_count": { "name": "Plants" }
     }

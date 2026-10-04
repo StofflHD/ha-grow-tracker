@@ -129,7 +129,7 @@
       "days_at_location": { "name": "Tage am Standort" },
       "phase_start": { "name": "Phasenbeginn" },
       "expected_harvest": { "name": "Voraussichtliche Ernte" },
-      "cuttings_taken": { "name": "Stecklinge geschnitten" },
+      "cuttings_taken": { "name": "Stecklinge" },
       "last_note": { "name": "Letzte Notiz" },
       "plant_count": { "name": "Pflanzen" }
     }

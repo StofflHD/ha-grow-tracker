@@ -175,7 +175,9 @@ async def test_add_note(hass: HomeAssistant, setup_entry: MockConfigEntry) -> No
 async def test_take_cuttings_log_only(hass: HomeAssistant, setup_entry: MockConfigEntry) -> None:
     await _call(hass, "take_cuttings", PLANT_MOTHER, count=4)
     sensor = _state(hass, "sensor", PLANT_MOTHER, "cuttings_taken")
-    assert sensor.state == "4"
+    # Nur protokolliert, keine Pflanzen angelegt → aktuell 0 Stecklinge
+    assert sensor.state == "0"
+    assert sensor.attributes["taken_total"] == 4
     assert sensor.attributes["log"] == [{"date": "2026-09-15", "count": 4}]
     assert len(setup_entry.runtime_data.plants) == 2
 
@@ -300,9 +302,13 @@ async def test_delete_manual_cutting_keeps_log(
     )
     await hass.async_block_till_done()
     assert not setup_entry.runtime_data.plants["manual_cutting"].logged_cutting
+    # Angezeigt wird jeder vorhandene Steckling, auch von Hand angelegte
+    assert _state(hass, "sensor", PLANT_MOTHER, "cuttings_taken").state == "1"
 
     await _remove_plant(hass, setup_entry, "manual_cutting")
-    assert _state(hass, "sensor", PLANT_MOTHER, "cuttings_taken").state == "4"
+    sensor = _state(hass, "sensor", PLANT_MOTHER, "cuttings_taken")
+    assert sensor.state == "0"
+    assert sensor.attributes["taken_total"] == 4  # Protokoll unverändert
 
 
 async def test_legacy_cutting_detected(hass: HomeAssistant, setup_entry: MockConfigEntry) -> None:
@@ -330,7 +336,9 @@ async def test_legacy_cutting_detected(hass: HomeAssistant, setup_entry: MockCon
     assert setup_entry.runtime_data.plants["legacy_cutting"].logged_cutting
 
     await _remove_plant(hass, setup_entry, "legacy_cutting")
-    assert _state(hass, "sensor", PLANT_MOTHER, "cuttings_taken").state == "0"
+    sensor = _state(hass, "sensor", PLANT_MOTHER, "cuttings_taken")
+    assert sensor.state == "0"
+    assert sensor.attributes["taken_total"] == 0
 
 
 async def test_mother_location_unchanged(hass: HomeAssistant, setup_entry: MockConfigEntry) -> None:
