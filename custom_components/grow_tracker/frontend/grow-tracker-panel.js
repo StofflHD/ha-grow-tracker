@@ -32,6 +32,9 @@ const I18N = {
     not_loaded: "Grow Tracker is not set up or not loaded.",
     no_locations: "No locations yet. Add locations and plants on the integration page.",
     no_plants: "No plants",
+    no_plants_yet: "No plants yet. Add plants on the integration page (Manage).",
+    hidden_location_one: "1 empty location hidden",
+    hidden_locations: "{n} empty locations hidden",
     without_location: "Without location",
     plant_one: "plant",
     plants: "plants",
@@ -100,6 +103,9 @@ const I18N = {
     not_loaded: "Grow Tracker ist nicht eingerichtet oder nicht geladen.",
     no_locations: "Noch keine Standorte. Standorte und Pflanzen legst du auf der Integrationsseite an.",
     no_plants: "Keine Pflanzen",
+    no_plants_yet: "Noch keine Pflanzen. Pflanzen legst du auf der Integrationsseite an (Verwalten).",
+    hidden_location_one: "1 leerer Standort ausgeblendet",
+    hidden_locations: "{n} leere Standorte ausgeblendet",
     without_location: "Ohne Standort",
     plant_one: "Pflanze",
     plants: "Pflanzen",
@@ -384,20 +390,34 @@ class GrowTrackerPanel extends HTMLElement {
       .map((ph) => `<span class="summary-item">${this._phaseChip(ph)}<b>${counts[ph]}</b></span>`)
       .join("");
 
-    const cards = this._data.locations.map((loc) =>
-      this._locationCard(
-        loc.name,
-        this._t(`location_types.${loc.type}`),
-        plants.filter((p) => p.location_id === loc.id)
-      )
+    // Nur Standorte anzeigen, an denen gerade Pflanzen stehen
+    const occupied = this._data.locations
+      .map((loc) => ({ loc, plants: plants.filter((p) => p.location_id === loc.id) }))
+      .filter(({ plants: here }) => here.length);
+    const hidden = this._data.locations.length - occupied.length;
+
+    const cards = occupied.map(({ loc, plants: here }) =>
+      this._locationCard(loc.name, this._t(`location_types.${loc.type}`), here)
     );
     const known = new Set(this._data.locations.map((l) => l.id));
     const homeless = plants.filter((p) => !known.has(p.location_id));
     if (homeless.length) cards.push(this._locationCard(this._t("without_location"), "", homeless));
 
+    if (!cards.length) {
+      main.innerHTML = `<div class="empty">${esc(this._t("no_plants_yet"))}</div>`;
+      return;
+    }
+
     main.innerHTML = `
       ${summary ? `<div class="summary">${summary}</div>` : ""}
       <div class="grid">${cards.join("")}</div>
+      ${
+        hidden
+          ? `<div class="hidden-note secondary small">${esc(
+              this._t(hidden === 1 ? "hidden_location_one" : "hidden_locations", { n: hidden })
+            )}</div>`
+          : ""
+      }
     `;
   }
 
@@ -764,6 +784,7 @@ const STYLES = `
     padding: 16px 16px 8px;
   }
   .card-title { font-size: 18px; font-weight: 500; }
+  .hidden-note { text-align: center; margin-top: 16px; }
   .count { color: var(--secondary-text-color); font-size: 14px; white-space: nowrap; }
   .secondary { color: var(--secondary-text-color); }
   .small { font-size: 12px; }
