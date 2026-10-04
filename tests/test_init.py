@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import Any
 
 from freezegun.api import FrozenDateTimeFactory
@@ -13,7 +14,7 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components.grow_tracker.const import DOMAIN
-from homeassistant.config_entries import ConfigEntryState
+from homeassistant.config_entries import ConfigEntryState, ConfigSubentry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import (
@@ -237,6 +238,99 @@ async def test_remove_plant(hass: HomeAssistant, setup_entry: MockConfigEntry) -
     assert er.async_get(hass).async_get(entity_id) is None
     assert dr.async_get(hass).async_get_device(identifiers={(DOMAIN, PLANT_SEED)}) is None
     assert _state(hass, "sensor", LOC_FLOWER, "plant_count").state == "0"
+
+
+async def _remove_plant(hass: HomeAssistant, entry: MockConfigEntry, plant_id: str) -> None:
+    """Wie „Pflanze löschen“ im Panel (config_entries/subentries/delete)."""
+    hass.config_entries.async_remove_subentry(entry, plant_id)
+    await hass.async_block_till_done()
+
+
+async def test_delete_cutting_updates_mother(
+    hass: HomeAssistant, setup_entry: MockConfigEntry
+) -> None:
+    await _call(hass, "take_cuttings", PLANT_MOTHER, count=3, create_plants=True)
+    await hass.async_block_till_done()
+    cuttings = [p.subentry_id for p in setup_entry.runtime_data.plants.values() if p.mother_id]
+    assert len(cuttings) == 3
+
+    await _remove_plant(hass, setup_entry, cuttings[0])
+    sensor = _state(hass, "sensor", PLANT_MOTHER, "cuttings_taken")
+    assert sensor.state == "2"
+    assert sensor.attributes["log"] == [{"date": "2026-09-15", "count": 2}]
+    assert len(sensor.attributes["tracked_cuttings"]) == 2
+
+    await _remove_plant(hass, setup_entry, cuttings[1])
+    await _remove_plant(hass, setup_entry, cuttings[2])
+    sensor = _state(hass, "sensor", PLANT_MOTHER, "cuttings_taken")
+    assert sensor.state == "0"
+    assert sensor.attributes["log"] == []
+
+
+async def test_delete_cutting_matches_cut_date(
+    hass: HomeAssistant, setup_entry: MockConfigEntry
+) -> None:
+    await _call(hass, "take_cuttings", PLANT_MOTHER, count=2, create_plants=True, date="2026-09-05")
+    await hass.async_block_till_done()
+    await _call(hass, "take_cuttings", PLANT_MOTHER, count=1)  # nur protokolliert, heute
+
+    old = next(p for p in setup_entry.runtime_data.plants.values() if p.mother_id)
+    await _remove_plant(hass, setup_entry, old.subentry_id)
+
+    log = setup_entry.runtime_data.plants[PLANT_MOTHER].cuttings_log
+    assert log == [{"date": "2026-09-05", "count": 1}, {"date": "2026-09-15", "count": 1}]
+
+
+async def test_delete_manual_cutting_keeps_log(
+    hass: HomeAssistant, setup_entry: MockConfigEntry
+) -> None:
+    """Von Hand angelegte Stecklinge waren nie im Protokoll – nichts abziehen."""
+    await _call(hass, "take_cuttings", PLANT_MOTHER, count=4)
+    hass.config_entries.async_add_subentry(
+        setup_entry,
+        ConfigSubentry(
+            data=MappingProxyType(
+                {"mother": PLANT_MOTHER, "mother_name": "Mutter Gelato", "location": LOC_PROP}
+            ),
+            subentry_type="plant",
+            title="Klon",
+            unique_id=None,
+            subentry_id="manual_cutting",
+        ),
+    )
+    await hass.async_block_till_done()
+    assert not setup_entry.runtime_data.plants["manual_cutting"].logged_cutting
+
+    await _remove_plant(hass, setup_entry, "manual_cutting")
+    assert _state(hass, "sensor", PLANT_MOTHER, "cuttings_taken").state == "4"
+
+
+async def test_legacy_cutting_detected(hass: HomeAssistant, setup_entry: MockConfigEntry) -> None:
+    """Stecklinge aus älteren Versionen (ohne Markierung) werden erkannt."""
+    await _call(hass, "take_cuttings", PLANT_MOTHER, count=1)
+    hass.config_entries.async_add_subentry(
+        setup_entry,
+        ConfigSubentry(
+            data=MappingProxyType(
+                {
+                    "mother": PLANT_MOTHER,
+                    "mother_name": "Mutter Gelato",
+                    "phase": "rooting",
+                    "start_date": "2026-09-15",
+                    "location": LOC_PROP,
+                }
+            ),
+            subentry_type="plant",
+            title="Mutter Gelato #1",
+            unique_id=None,
+            subentry_id="legacy_cutting",
+        ),
+    )
+    await hass.async_block_till_done()
+    assert setup_entry.runtime_data.plants["legacy_cutting"].logged_cutting
+
+    await _remove_plant(hass, setup_entry, "legacy_cutting")
+    assert _state(hass, "sensor", PLANT_MOTHER, "cuttings_taken").state == "0"
 
 
 async def test_mother_location_unchanged(hass: HomeAssistant, setup_entry: MockConfigEntry) -> None:

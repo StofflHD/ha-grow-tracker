@@ -69,6 +69,7 @@ def _plant(plant: GrowPlant) -> dict[str, Any]:
         "name": plant.name,
         "strain": plant.strain,
         "origin": plant.origin,
+        "logged_cutting": plant.logged_cutting,
         "mother_id": plant.mother_id,
         "mother_name": plant.mother_name,
         "phase": plant.phase,

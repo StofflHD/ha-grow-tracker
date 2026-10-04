@@ -77,6 +77,8 @@ async def async_migrate_entry(hass: HomeAssistant, entry: GrowConfigEntry) -> bo
 
 async def _async_update_listener(hass: HomeAssistant, entry: GrowConfigEntry) -> None:
     """Neu laden, wenn Standorte/Pflanzen hinzugefügt, geändert oder gelöscht werden."""
-    if entry.runtime_data.reload_pending:
+    hub = entry.runtime_data
+    if hub.reload_pending:
         return
+    await hub.async_handle_removed_plants()
     await hass.config_entries.async_reload(entry.entry_id)

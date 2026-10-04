@@ -76,6 +76,7 @@ const I18N = {
     delete_confirm: "Really delete “{name}”?",
     delete_warning: "Phase and location history, notes and the cuttings log will be lost. This cannot be undone.",
     delete_children_note: "Its {n} tracked cuttings are kept.",
+    delete_mother_note: "The cutting is also removed from the cuttings log of “{name}”.",
     cancel: "Cancel",
     delete_final: "Delete permanently",
     phases: {
@@ -147,6 +148,7 @@ const I18N = {
     delete_confirm: "„{name}“ wirklich löschen?",
     delete_warning: "Phasen- und Standort-Historie, Notizen und das Stecklings-Protokoll gehen verloren. Das lässt sich nicht rückgängig machen.",
     delete_children_note: "Die {n} erfassten Stecklinge bleiben erhalten.",
+    delete_mother_note: "Der Steckling wird auch aus dem Stecklings-Protokoll von „{name}“ entfernt.",
     cancel: "Abbrechen",
     delete_final: "Endgültig löschen",
     phases: {
@@ -661,11 +663,16 @@ class GrowTrackerPanel extends HTMLElement {
     const childNote = p.children.length
       ? `<p>${esc(this._t("delete_children_note", { n: p.children.length }))}</p>`
       : "";
+    const mother = p.logged_cutting && p.mother_id ? this._plant(p.mother_id) : null;
+    const motherNote = mother
+      ? `<p>${esc(this._t("delete_mother_note", { name: mother.name }))}</p>`
+      : "";
     area.innerHTML = `
       <div class="confirm" role="alertdialog">
         <p><b>${esc(this._t("delete_confirm", { name: p.name }))}</b></p>
         <p>${esc(this._t("delete_warning"))}</p>
         ${childNote}
+        ${motherNote}
         <div class="confirm-buttons">
           <button class="text-button" id="delete-cancel">${esc(this._t("cancel"))}</button>
           <button class="danger" id="delete-final">${esc(this._t("delete_final"))}</button>

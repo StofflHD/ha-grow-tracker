@@ -99,7 +99,8 @@ PLANT_SENSORS: tuple[GrowSensorDescription, ...] = (
     GrowSensorDescription(
         key="cuttings_taken",
         icon="mdi:content-cut",
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        # TOTAL statt TOTAL_INCREASING: gelöschte Stecklinge verringern den Zähler
+        state_class=SensorStateClass.TOTAL,
         value_fn=lambda p: p.cuttings_taken,
         attrs_fn=_cuttings_attrs,
     ),

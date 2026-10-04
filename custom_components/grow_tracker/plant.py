@@ -15,6 +15,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_FLOWER_WEEKS,
     CONF_LOCATION,
+    CONF_LOGGED_CUTTING,
     CONF_MOTHER,
     CONF_MOTHER_NAME,
     CONF_PHASE,
@@ -109,8 +110,40 @@ class GrowPlant:
     def cuttings_taken(self) -> int:
         return sum(item["count"] for item in self.cuttings_log)
 
+    @property
+    def logged_cutting(self) -> bool:
+        """Über take_cuttings angelegt – zählt im Schnitt-Protokoll der Mutter."""
+        data = self.subentry.data
+        if CONF_LOGGED_CUTTING in data:
+            return bool(data[CONF_LOGGED_CUTTING])
+        # Stecklinge aus Versionen ohne Markierung: "<Mutter> #<n>", Start in Bewurzelung
+        mother_name = data.get(CONF_MOTHER_NAME)
+        return bool(
+            data.get(CONF_MOTHER)
+            and mother_name
+            and data.get(CONF_PHASE) == PHASE_ROOTING
+            and self.subentry.title.startswith(f"{mother_name} #")
+        )
+
     def children(self) -> list[GrowPlant]:
         return [p for p in self.hub.plants.values() if p.mother_id == self.subentry_id]
+
+    def remove_logged_cutting(self, cut_date: date) -> bool:
+        """Einen Steckling aus dem Schnitt-Protokoll austragen.
+
+        Bevorzugt den Eintrag vom Schnittdatum, sonst den jüngsten Eintrag.
+        """
+        log = self.cuttings_log
+        candidates = [i for i in reversed(range(len(log))) if log[i]["count"] > 0]
+        if not candidates:
+            return False
+        idx = next(
+            (i for i in candidates if log[i]["date"] == cut_date.isoformat()), candidates[0]
+        )
+        log[idx]["count"] -= 1
+        if log[idx]["count"] == 0:
+            del log[idx]
+        return True
 
     # --- Phasen ----------------------------------------------------------
 
@@ -295,6 +328,7 @@ class GrowPlant:
             data: dict[str, Any] = {
                 CONF_MOTHER: self.subentry_id,
                 CONF_MOTHER_NAME: self.name,
+                CONF_LOGGED_CUTTING: True,
                 CONF_PHASE: PHASE_ROOTING,
                 CONF_START_DATE: start.isoformat(),
                 CONF_FLOWER_WEEKS: self.flower_weeks,

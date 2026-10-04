@@ -101,6 +101,23 @@ class GrowHub:
     async def async_remove(self) -> None:
         await self._store.async_remove()
 
+    async def async_handle_removed_plants(self) -> None:
+        """Vor dem Reload: gelöschte Stecklinge aus dem Protokoll ihrer Mutter austragen.
+
+        Nur hier sind die alten Pflanzen-Objekte (mit Mutter und Schnittdatum) noch bekannt.
+        """
+        current = self.entry.subentries
+        changed = False
+        for plant_id, plant in self.plants.items():
+            if plant_id in current or not plant.logged_cutting:
+                continue
+            mother = self.plants.get(plant.mother_id or "")
+            if mother is None or mother.subentry_id not in current:
+                continue
+            changed |= mother.remove_logged_cutting(plant.grow_start)
+        if changed:
+            await self.async_save()
+
     # --- Standorte -------------------------------------------------------
 
     def resolve_location(self, value: str) -> str:

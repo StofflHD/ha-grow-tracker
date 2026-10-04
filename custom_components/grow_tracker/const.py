@@ -35,6 +35,8 @@ CONF_LOCATION = "location"
 CONF_PHASE = "phase"
 CONF_MOTHER = "mother"
 CONF_MOTHER_NAME = "mother_name"
+# Steckling wurde über take_cuttings angelegt und zählt im Schnitt-Protokoll der Mutter
+CONF_LOGGED_CUTTING = "logged_cutting"
 
 DEFAULT_FLOWER_WEEKS = 9
 
