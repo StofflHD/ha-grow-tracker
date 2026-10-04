@@ -87,6 +87,38 @@ async def test_ws_after_creating_cuttings(
     assert mother["phase_entity_id"] is not None
 
 
+async def test_ws_after_deleting_mother(
+    hass: HomeAssistant, setup_entry: MockConfigEntry, hass_ws_client: WebSocketGenerator
+) -> None:
+    """Löschen aus dem Panel entfernt die Subentry – Stecklinge behalten den Mutternamen."""
+    phase_entity = er.async_get(hass).async_get_entity_id(
+        "select", "grow_tracker", f"{PLANT_MOTHER}_phase"
+    )
+    await hass.services.async_call(
+        "grow_tracker",
+        "take_cuttings",
+        {"entity_id": phase_entity, "count": 1, "create_plants": True},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    assert await async_setup_component(hass, "websocket_api", {})
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "grow_tracker/subscribe"})
+    assert (await client.receive_json())["success"]
+    assert len((await client.receive_json())["event"]["plants"]) == 3
+
+    # Gleicher Aufruf wie "config_entries/subentries/delete" aus dem Panel
+    hass.config_entries.async_remove_subentry(setup_entry, PLANT_MOTHER)
+    await hass.async_block_till_done()
+
+    event = (await client.receive_json())["event"]
+    assert event["loaded"] is True
+    assert PLANT_MOTHER not in [p["id"] for p in event["plants"]]
+    cutting = next(p for p in event["plants"] if p["origin"] == "cutting")
+    assert cutting["mother_name"] == "Mutter Gelato"
+
+
 async def test_ws_not_loaded(hass: HomeAssistant, hass_ws_client: WebSocketGenerator) -> None:
     assert await async_setup_component(hass, "grow_tracker", {})
     assert await async_setup_component(hass, "websocket_api", {})

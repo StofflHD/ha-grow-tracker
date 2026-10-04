@@ -83,6 +83,15 @@
   window.serviceCalls = [];
   const hass = {
     language: lang,
+    user: { is_admin: params.get("admin") !== "0" },
+    async callWS(msg) {
+      window.serviceCalls.push(msg);
+      if (msg.type === "config_entries/subentries/delete") {
+        data.plants = data.plants.filter((p) => p.id !== msg.subentry_id);
+        data.plants.forEach((p) => { p.children = p.children.filter((c) => c !== msg.subentry_id); });
+        setTimeout(window.__push, 10);
+      }
+    },
     connection: {
       subscribeMessage(cb, msg) {
         window.__push = () => cb(JSON.parse(JSON.stringify(data)));

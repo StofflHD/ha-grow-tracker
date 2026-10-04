@@ -69,6 +69,12 @@ const I18N = {
     edit: "Edit plant",
     close: "Close",
     saved: "Saved",
+    delete_plant: "Delete plant",
+    delete_confirm: "Really delete “{name}”?",
+    delete_warning: "Phase and location history, notes and the cuttings log will be lost. This cannot be undone.",
+    delete_children_note: "Its {n} tracked cuttings are kept.",
+    cancel: "Cancel",
+    delete_final: "Delete permanently",
     phases: {
       germination: "Germination",
       rooting: "Rooting",
@@ -131,6 +137,12 @@ const I18N = {
     edit: "Pflanze bearbeiten",
     close: "Schließen",
     saved: "Gespeichert",
+    delete_plant: "Pflanze löschen",
+    delete_confirm: "„{name}“ wirklich löschen?",
+    delete_warning: "Phasen- und Standort-Historie, Notizen und das Stecklings-Protokoll gehen verloren. Das lässt sich nicht rückgängig machen.",
+    delete_children_note: "Die {n} erfassten Stecklinge bleiben erhalten.",
+    cancel: "Abbrechen",
+    delete_final: "Endgültig löschen",
     phases: {
       germination: "Keimung",
       rooting: "Bewurzelung",
@@ -598,7 +610,10 @@ class GrowTrackerPanel extends HTMLElement {
         ${cuttingsForm}
       </div>
       <div class="status" id="status" role="status"></div>
-      <button class="text-button" id="edit">${esc(this._t("edit"))}</button>
+      <div class="footer">
+        <button class="text-button" id="edit">${esc(this._t("edit"))}</button>
+        ${this._hass.user?.is_admin ? `<div id="delete-area"></div>` : ""}
+      </div>
     `;
 
     const forms = this.shadowRoot.getElementById("dlg-forms");
@@ -609,6 +624,54 @@ class GrowTrackerPanel extends HTMLElement {
       })
     );
     forms.querySelector("#edit").addEventListener("click", () => this._navigate(INTEGRATION_URL));
+    this._renderDeleteArea(false);
+  }
+
+  _renderDeleteArea(confirming) {
+    const area = this.shadowRoot.getElementById("delete-area");
+    const p = this._plant(this._selectedId);
+    if (!area || !p) return;
+
+    if (!confirming) {
+      area.innerHTML = `<button class="text-button danger-text" id="delete">${esc(this._t("delete_plant"))}</button>`;
+      area.querySelector("#delete").addEventListener("click", () => this._renderDeleteArea(true));
+      return;
+    }
+
+    const childNote = p.children.length
+      ? `<p>${esc(this._t("delete_children_note", { n: p.children.length }))}</p>`
+      : "";
+    area.innerHTML = `
+      <div class="confirm" role="alertdialog">
+        <p><b>${esc(this._t("delete_confirm", { name: p.name }))}</b></p>
+        <p>${esc(this._t("delete_warning"))}</p>
+        ${childNote}
+        <div class="confirm-buttons">
+          <button class="text-button" id="delete-cancel">${esc(this._t("cancel"))}</button>
+          <button class="danger" id="delete-final">${esc(this._t("delete_final"))}</button>
+        </div>
+      </div>`;
+    area.querySelector("#delete-cancel").addEventListener("click", () => this._renderDeleteArea(false));
+    area.querySelector("#delete-final").addEventListener("click", () => this._deletePlant(p));
+    area.querySelector("#delete-cancel").focus();
+  }
+
+  async _deletePlant(plant) {
+    const status = this.shadowRoot.getElementById("status");
+    const area = this.shadowRoot.getElementById("delete-area");
+    area.querySelectorAll("button").forEach((b) => (b.disabled = true));
+    try {
+      await this._hass.callWS({
+        type: "config_entries/subentries/delete",
+        entry_id: this._data.entry_id,
+        subentry_id: plant.id,
+      });
+      this._closeDialog();
+    } catch (err) {
+      status.className = "status error";
+      status.textContent = err?.message || String(err);
+      this._renderDeleteArea(false);
+    }
   }
 
   async _submit(form) {
@@ -858,6 +921,35 @@ const STYLES = `
     font-weight: 500;
   }
   .primary:disabled { opacity: 0.5; cursor: default; }
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .dialog .footer .text-button { margin-top: 0; }
+  .dialog .danger-text { color: var(--error-color, #db4437); }
+  .confirm {
+    border: 1px solid var(--error-color, #db4437);
+    border-radius: 12px;
+    padding: 12px 16px;
+    max-width: 420px;
+    background: color-mix(in srgb, var(--error-color, #db4437) 8%, transparent);
+  }
+  .confirm p { margin: 0 0 8px; font-size: 14px; }
+  .confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+  .danger {
+    background: var(--error-color, #db4437);
+    color: #fff;
+    border: none;
+    border-radius: 18px;
+    padding: 8px 20px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .danger:disabled { opacity: 0.5; cursor: default; }
   .status { min-height: 20px; margin-top: 12px; font-size: 14px; }
   .status.ok { color: var(--success-color, #43a047); }
   .status.error { color: var(--error-color, #db4437); }
