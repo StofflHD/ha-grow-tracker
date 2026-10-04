@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import voluptuous as vol
@@ -16,9 +17,11 @@ from homeassistant.util import dt as dt_util
 from .const import (
     DATA_HUB,
     SIGNAL_PANEL_UPDATE,
+    WS_DELETE_NOTE,
     WS_SET_CUTTINGS_LOG,
     WS_SET_HISTORY,
     WS_SUBSCRIBE,
+    WS_UPDATE_NOTE,
 )
 from .hub import GrowHub
 from .plant import GrowPlant
@@ -29,6 +32,65 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_subscribe)
     websocket_api.async_register_command(hass, ws_set_cuttings_log)
     websocket_api.async_register_command(hass, ws_set_history)
+    websocket_api.async_register_command(hass, ws_update_note)
+    websocket_api.async_register_command(hass, ws_delete_note)
+
+
+async def _async_plant_action(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+    action: Callable[[GrowPlant], Awaitable[None]],
+) -> None:
+    """Pflanze suchen, Aktion ausführen und Ergebnis/Fehler an das Panel senden."""
+    hub: GrowHub | None = hass.data.get(DATA_HUB)
+    plant = hub.plants.get(msg["plant_id"]) if hub else None
+    if plant is None:
+        connection.send_error(msg["id"], websocket_api.ERR_NOT_FOUND, "Unknown plant")
+        return
+    try:
+        await action(plant)
+    except ServiceValidationError as err:
+        connection.send_error(msg["id"], websocket_api.ERR_INVALID_FORMAT, str(err))
+        return
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_UPDATE_NOTE,
+        vol.Required("plant_id"): str,
+        vol.Required("note_id"): str,
+        vol.Required("text"): str,
+        vol.Required("date"): cv.datetime,
+    }
+)
+@websocket_api.async_response
+async def ws_update_note(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    await _async_plant_action(
+        hass,
+        connection,
+        msg,
+        lambda plant: plant.async_update_note(msg["note_id"], msg["text"], msg["date"]),
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_DELETE_NOTE,
+        vol.Required("plant_id"): str,
+        vol.Required("note_id"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_delete_note(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    await _async_plant_action(
+        hass, connection, msg, lambda plant: plant.async_delete_note(msg["note_id"])
+    )
 
 
 @websocket_api.websocket_command(
@@ -136,6 +198,7 @@ def _plant(plant: GrowPlant) -> dict[str, Any]:
         "id": plant.subentry_id,
         "name": plant.name,
         "strain": plant.strain,
+        "phenotype": plant.phenotype,
         "origin": plant.origin,
         "logged_cutting": plant.logged_cutting,
         "mother_id": plant.mother_id,

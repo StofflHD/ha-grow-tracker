@@ -71,6 +71,13 @@ const I18N = {
     cutting_one: "1 cutting",
     no_cuttings: "No cuttings at the moment",
     edit_log: "Edit",
+    phenotype: "Phenotype",
+    breeder: "Breeder/Cutter",
+    note_time: "Time",
+    edit_note: "Edit note",
+    delete: "Delete",
+    delete_note_confirm: "Really delete?",
+    note_invalid: "The note needs a text and a time that is not in the future.",
     log_empty: "No entries yet",
     add_entry: "Add entry",
     remove_entry: "Remove entry",
@@ -153,6 +160,13 @@ const I18N = {
     cutting_one: "1 Steckling",
     no_cuttings: "Aktuell keine Stecklinge",
     edit_log: "Bearbeiten",
+    phenotype: "Phänotyp",
+    breeder: "Breeder/Cutter",
+    note_time: "Zeitpunkt",
+    edit_note: "Notiz bearbeiten",
+    delete: "Löschen",
+    delete_note_confirm: "Wirklich löschen?",
+    note_invalid: "Die Notiz braucht einen Text und einen Zeitpunkt, der nicht in der Zukunft liegt.",
     log_empty: "Noch keine Einträge",
     add_entry: "Eintrag hinzufügen",
     remove_entry: "Eintrag entfernen",
@@ -483,7 +497,7 @@ class GrowTrackerPanel extends HTMLElement {
         <span class="dot" style="background:${PHASE_COLORS[p.phase]}"></span>
         <span class="plant-main">
           <span class="plant-name">${esc(p.name)}</span>
-          <span class="secondary small">${esc(p.strain || "")}</span>
+          <span class="secondary small">${[p.phenotype, p.strain].filter(Boolean).map(esc).join(" · ")}</span>
           ${extra}
         </span>
         <span class="plant-side">
@@ -520,7 +534,14 @@ class GrowTrackerPanel extends HTMLElement {
     if (this._edit) return;
     this.shadowRoot.getElementById("dlg-title").innerHTML = `
       <div class="dlg-name">${esc(p.name)}</div>
-      <div class="secondary">${[p.strain, p.location_name].filter(Boolean).map(esc).join(" · ")}</div>`;
+      <div class="secondary">${[
+        p.phenotype && `${this._t("phenotype")}: ${p.phenotype}`,
+        p.strain && `${this._t("breeder")}: ${p.strain}`,
+        p.location_name,
+      ]
+        .filter(Boolean)
+        .map(esc)
+        .join(" · ")}</div>`;
 
     const origin =
       p.origin === "cutting"
@@ -539,22 +560,6 @@ class GrowTrackerPanel extends HTMLElement {
     if (p.expected_harvest) {
       stats.push([this._t("expected_harvest"), `${this._date(p.expected_harvest)} – ${this._harvestText(p)}`]);
     }
-
-    const notes = p.notes.length
-      ? p.notes
-          .slice()
-          .reverse()
-          .map(
-            (n) => `
-          <li class="note">
-            <div class="secondary small">${this._dateTime(n.date)} · ${esc(this._t(`phases.${n.phase}`))} · ${esc(
-              this._t("day")
-            )} ${n.day}</div>
-            <div>${esc(n.text)}</div>
-          </li>`
-          )
-          .join("")
-      : `<li class="secondary">${esc(this._t("no_notes"))}</li>`;
 
     let cuttings = "";
     if (p.phase === "mother" || p.cuttings_log.length || p.children.length) {
@@ -582,9 +587,127 @@ class GrowTrackerPanel extends HTMLElement {
       </div>
       ${cuttings}
       <h3>${esc(this._t("notes"))}</h3>
-      <ul class="list notes">${notes}</ul>
+      <ul class="list notes" id="notes-list"></ul>
     `;
     this._renderEditAreas();
+    this._renderNotes();
+  }
+
+  // --- Notizen (Anzeige / Bearbeiten) ---------------------------------------------
+
+  _localInput(value) {
+    // "YYYY-MM-DDTHH:MM" in lokaler Zeit für <input type="datetime-local">
+    const d = value instanceof Date ? value : new Date(value);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
+      d.getMinutes()
+    )}`;
+  }
+
+  _renderNotes() {
+    const list = this.shadowRoot.getElementById("notes-list");
+    const p = this._plant(this._selectedId);
+    if (!list || !p) return;
+    if (!p.notes.length) {
+      list.innerHTML = `<li class="secondary">${esc(this._t("no_notes"))}</li>`;
+      return;
+    }
+
+    const editingId = this._edit?.kind === "note" ? this._edit.id : null;
+    const now = this._localInput(new Date());
+    list.innerHTML = p.notes
+      .slice()
+      .reverse()
+      .map((n) => {
+        if (n.id === editingId) {
+          return `
+          <li class="note editing">
+            <form class="note-form" novalidate>
+              <label>${esc(this._t("note_time"))}
+                <input type="datetime-local" name="date" value="${this._localInput(n.date)}" max="${now}">
+              </label>
+              <textarea name="text" rows="3" aria-label="${esc(this._t("notes"))}">${esc(n.text)}</textarea>
+              <div class="status" data-status role="status"></div>
+              <div class="note-buttons">
+                <button type="button" class="text-button danger-text" data-delete>${esc(this._t("delete"))}</button>
+                <span class="spacer"></span>
+                <button type="button" class="text-button" data-cancel>${esc(this._t("cancel"))}</button>
+                <button type="submit" class="primary">${esc(this._t("save"))}</button>
+              </div>
+            </form>
+          </li>`;
+        }
+        const location = n.location ? ` · ${esc(n.location)}` : "";
+        return `
+          <li class="note">
+            <div class="note-head">
+              <div class="secondary small">${this._dateTime(n.date)} · ${esc(this._t(`phases.${n.phase}`))} · ${esc(
+          this._t("day")
+        )} ${n.day}${location}</div>
+              <button class="icon-button small-icon" data-edit-note="${esc(n.id)}" ${this._edit ? "hidden" : ""}
+                aria-label="${esc(this._t("edit_note"))}" title="${esc(this._t("edit_note"))}">✎</button>
+            </div>
+            <div class="note-text">${esc(n.text)}</div>
+          </li>`;
+      })
+      .join("");
+
+    list.querySelectorAll("[data-edit-note]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        this._edit = { kind: "note", id: btn.dataset.editNote };
+        this._renderEditAreas();
+        this._renderNotes();
+        list.querySelector("textarea")?.focus();
+      })
+    );
+
+    const form = list.querySelector(".note-form");
+    if (!form) return;
+    const status = form.querySelector("[data-status]");
+    const showError = (err) => {
+      status.className = "status error";
+      status.textContent = err?.message || String(err);
+      form.querySelectorAll("button").forEach((b) => (b.disabled = false));
+    };
+    form.querySelector("[data-cancel]").addEventListener("click", () => {
+      this._edit = null;
+      this._renderDialogInfo();
+    });
+    const deleteButton = form.querySelector("[data-delete]");
+    deleteButton.addEventListener("click", async () => {
+      // Zweistufig: erster Klick fragt nach, zweiter löscht
+      if (!deleteButton.dataset.armed) {
+        deleteButton.dataset.armed = "1";
+        deleteButton.textContent = this._t("delete_note_confirm");
+        return;
+      }
+      form.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      try {
+        await this._hass.callWS({ type: "grow_tracker/delete_note", plant_id: p.id, note_id: editingId });
+        this._edit = null;
+        this._renderDialogInfo();
+      } catch (err) {
+        showError(err);
+      }
+    });
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const text = form.querySelector("textarea").value.trim();
+      const date = form.querySelector('input[name="date"]').value;
+      if (!text || !date || date > this._localInput(new Date())) {
+        status.className = "status error";
+        status.textContent = this._t("note_invalid");
+        return;
+      }
+      form.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      try {
+        await this._hass.callWS({ type: "grow_tracker/update_note", plant_id: p.id, note_id: editingId, text, date });
+        this._edit = null;
+        this._renderDialogInfo();
+      } catch (err) {
+        showError(err);
+      }
+    });
   }
 
   // --- Bearbeitbare Listen (Phasen, Standorte, Schnitt-Protokoll) -----------------
@@ -827,6 +950,7 @@ class GrowTrackerPanel extends HTMLElement {
     const p = this._plant(this._selectedId);
     if (!p) return;
     const today = this._data.today;
+    const nowLocal = this._localInput(new Date());
     const phaseOptions = PHASES.map(
       (ph) => `<option value="${ph}" ${ph === p.phase ? "selected" : ""}>${esc(this._t(`phases.${ph}`))}</option>`
     ).join("");
@@ -873,9 +997,15 @@ class GrowTrackerPanel extends HTMLElement {
           </div>
           <button class="primary" type="submit">${esc(this._t("save"))}</button>
         </form>
-        <form data-action="add_note" class="wide">
+        <form data-action="add_note" class="wide" data-default-time="${nowLocal}">
           <h3>${esc(this._t("add_note"))}</h3>
-          <textarea name="note" rows="3" required placeholder="${esc(this._t("note_placeholder"))}"></textarea>
+          <div class="row">
+            <label class="note-time">${esc(this._t("note_time"))}
+              <input type="datetime-local" name="date" value="${nowLocal}" max="${nowLocal}">
+            </label>
+          </div>
+          <textarea name="note" rows="3" required placeholder="${esc(this._t("note_placeholder"))}"
+            aria-label="${esc(this._t("add_note"))}"></textarea>
           <button class="primary" type="submit">${esc(this._t("save"))}</button>
         </form>
         ${cuttingsForm}
@@ -966,6 +1096,9 @@ class GrowTrackerPanel extends HTMLElement {
     } else if (action === "add_note") {
       data.note = String(fd.get("note")).trim();
       if (!data.note) return;
+      // Nur einen Zeitpunkt senden, wenn er geändert wurde – sonst gilt "jetzt" (inkl. Logbuch)
+      const when = fd.get("date");
+      if (when && when !== form.dataset.defaultTime) data.date = when;
     } else if (action === "take_cuttings") {
       data.count = Number(fd.get("count"));
       data.create_plants = fd.get("create_plants") === "on";
@@ -1160,6 +1293,14 @@ const STYLES = `
     border-bottom: 1px solid var(--divider-color);
   }
   .list li.note { display: block; }
+  .note-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .note-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .dialog .small-icon { width: 32px; height: 32px; font-size: 16px; flex: none; }
+  .note-form { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+  .note-form label, .note-time { max-width: 260px; }
+  .note-buttons { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .note-buttons .spacer { flex: 1; }
+  .dialog .note-buttons .text-button { margin-top: 0; }
   .section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .section-head h3 { margin-bottom: 8px; }
   .dialog .small-button { padding: 4px 8px; font-size: 12px; margin-top: 12px; }

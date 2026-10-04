@@ -79,3 +79,7 @@ add_note:
       selector:
         text:
           multiline: true
+    date:
+      required: false
+      selector:
+        datetime:

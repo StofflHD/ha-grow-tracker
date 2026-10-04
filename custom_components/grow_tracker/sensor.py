@@ -171,6 +171,7 @@ class LocationPlantCountSensor(LocationEntity, SensorEntity):
                 {
                     "name": plant.name,
                     "strain": plant.strain,
+                    "phenotype": plant.phenotype,
                     "phase": plant.phase,
                     "days_in_phase": plant.days_in_phase,
                     "days_at_location": plant.days_at_location,

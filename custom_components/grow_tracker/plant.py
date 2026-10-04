@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 from homeassistant.components.logbook import async_log_entry
 from homeassistant.config_entries import ConfigSubentry
@@ -19,6 +20,7 @@ from .const import (
     CONF_MOTHER,
     CONF_MOTHER_NAME,
     CONF_PHASE,
+    CONF_PHENOTYPE,
     CONF_START_DATE,
     CONF_STRAIN,
     DEFAULT_FLOWER_WEEKS,
@@ -54,6 +56,9 @@ class GrowPlant:
         self.data.setdefault("notes", [])
         self.data.setdefault("cuttings", [])
         self.data.setdefault("locations", [])
+        # Notizen aus älteren Versionen haben noch keine ID (nötig zum Bearbeiten)
+        for note in self.data["notes"]:
+            note.setdefault("id", uuid4().hex)
 
     def _initial_data(self) -> dict[str, Any]:
         cfg = self.subentry.data
@@ -79,7 +84,12 @@ class GrowPlant:
 
     @property
     def strain(self) -> str | None:
+        """Breeder/Cutter (Schlüssel heißt aus Kompatibilität weiter "strain")."""
         return self.subentry.data.get(CONF_STRAIN) or None
+
+    @property
+    def phenotype(self) -> str | None:
+        return self.subentry.data.get(CONF_PHENOTYPE) or None
 
     @property
     def flower_weeks(self) -> int:
@@ -325,19 +335,58 @@ class GrowPlant:
             self.async_sync_area()
         await self.hub.async_save_and_notify()
 
-    async def async_add_note(self, text: str) -> None:
-        note = {
-            "date": dt_util.now().isoformat(timespec="minutes"),
-            "location": self.location_name,
-            "phase": self.phase,
-            "day": self.days_total,
+    # --- Notizen ---------------------------------------------------------
+
+    @property
+    def notes(self) -> list[dict[str, Any]]:
+        return self.data["notes"]
+
+    def _note_fields(self, text: str, when: datetime) -> dict[str, Any]:
+        """Phase, Standort und Tag passend zum Zeitpunkt der Notiz bestimmen."""
+        day = when.date()
+        location_id = _value_at(self.location_history, "location", day)
+        location = self.hub.locations.get(location_id) if location_id else None
+        return {
+            "date": when.isoformat(timespec="minutes"),
+            "location": location.name if location else None,
+            "phase": _value_at(self.history, "phase", day) or self.phase,
+            "day": max((day - self.grow_start).days, 0),
             "text": text,
         }
-        self.data["notes"].append(note)
-        del self.data["notes"][:-MAX_NOTES]
+
+    def _sort_and_trim_notes(self) -> None:
+        self.notes.sort(key=lambda note: _parse_note_date(note["date"]))
+        del self.notes[:-MAX_NOTES]
+
+    def _find_note(self, note_id: str) -> dict[str, Any]:
+        for note in self.notes:
+            if note.get("id") == note_id:
+                return note
+        raise ServiceValidationError(f"Unbekannte Notiz: {note_id}")
+
+    async def async_add_note(self, text: str, when: datetime | None = None) -> None:
+        live = when is None
+        when = dt_util.now() if when is None else _validate_note_time(when)
+        note = {"id": uuid4().hex, **self._note_fields(text, when)}
+        self.notes.append(note)
+        self._sort_and_trim_notes()
 
         self.hass.bus.async_fire(EVENT_NOTE_ADDED, {**self._event_base(), **note})
-        async_log_entry(self.hass, self.name, text, DOMAIN, self.phase_entity_id)
+        # Logbuch kennt nur "jetzt" – nachgetragene Notizen dort nicht eintragen
+        if live:
+            async_log_entry(self.hass, self.name, text, DOMAIN, self.phase_entity_id)
+        await self.hub.async_save_and_notify()
+
+    async def async_update_note(self, note_id: str, text: str, when: datetime) -> None:
+        note = self._find_note(note_id)
+        if not text.strip():
+            raise ServiceValidationError("Die Notiz darf nicht leer sein")
+        note.update(self._note_fields(text, _validate_note_time(when)))
+        self._sort_and_trim_notes()
+        await self.hub.async_save_and_notify()
+
+    async def async_delete_note(self, note_id: str) -> None:
+        self.notes.remove(self._find_note(note_id))
         await self.hub.async_save_and_notify()
 
     async def async_take_cuttings(
@@ -391,6 +440,8 @@ class GrowPlant:
                 data[CONF_LOCATION] = location_id
             if self.strain:
                 data[CONF_STRAIN] = self.strain
+            if self.phenotype:  # Klone haben denselben Phänotyp wie die Mutter
+                data[CONF_PHENOTYPE] = self.phenotype
             self.hass.config_entries.async_add_subentry(
                 entry,
                 ConfigSubentry(
@@ -440,3 +491,26 @@ def _durations(history: list[dict[str, str]], key: str) -> dict[str, int]:
 
 def _today() -> date:
     return dt_util.now().date()
+
+
+def _value_at(history: list[dict[str, str]], key: str, day: date) -> str | None:
+    """Wert einer Historie an einem Tag (vor dem ersten Eintrag: erster Wert)."""
+    value = history[0][key] if history else None
+    for item in history:
+        if date.fromisoformat(item["start"]) <= day:
+            value = item[key]
+    return value
+
+
+def _validate_note_time(when: datetime) -> datetime:
+    """Zeitzone ergänzen (lokale HA-Zeit) und Zeitpunkte in der Zukunft ablehnen."""
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=dt_util.get_default_time_zone())
+    if when > dt_util.now() + timedelta(minutes=1):
+        raise ServiceValidationError("Der Zeitpunkt der Notiz liegt in der Zukunft")
+    return when
+
+
+def _parse_note_date(value: str) -> datetime:
+    parsed = dt_util.parse_datetime(value)
+    return parsed if parsed is not None else datetime.min.replace(tzinfo=dt_util.UTC)

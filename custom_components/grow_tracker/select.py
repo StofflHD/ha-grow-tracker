@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 import voluptuous as vol
@@ -54,7 +54,7 @@ async def async_setup_entry(
     )
     platform.async_register_entity_service(
         SERVICE_ADD_NOTE,
-        {vol.Required(ATTR_NOTE): cv.string},
+        {vol.Required(ATTR_NOTE): cv.string, vol.Optional(ATTR_DATE): cv.datetime},
         "async_service_add_note",
     )
     platform.async_register_entity_service(
@@ -80,8 +80,8 @@ class GrowSelectBase(PlantEntity, SelectEntity):
     ) -> None:
         await self.plant.async_set_location(self.hub.resolve_location(location), date)
 
-    async def async_service_add_note(self, note: str) -> None:
-        await self.plant.async_add_note(note)
+    async def async_service_add_note(self, note: str, date: datetime | None = None) -> None:
+        await self.plant.async_add_note(note, date)
 
     async def async_service_take_cuttings(
         self,
@@ -113,6 +113,7 @@ class GrowPhaseSelect(GrowSelectBase):
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
             "strain": self.plant.strain,
+            "phenotype": self.plant.phenotype,
             "origin": self.plant.origin,
             "mother": self.plant.mother_name,
             "location": self.plant.location_name,

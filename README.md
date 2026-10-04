@@ -12,7 +12,8 @@ across all of your grow locations (tents, cabinets, chambers).
 - **Locations** with a type and an optional Home Assistant area – plants are moved to that area automatically
 - **Plants** with phase history: germination · rooting · vegetative · mother plant · flowering · drying · curing · finished
 - **Mother plants & cuttings**: log cuttings taken, optionally create every cutting as a new plant linked to its mother
-- **Diary notes** stored per plant and shown in the logbook
+- **Plants** with strain, breeder/cutter and phenotype
+- **Diary notes** per plant – add notes for any past time, edit or delete them; current notes also appear in the logbook
 - Days total / in phase / at location, flowering week, expected harvest date
 - Events for automations
 
@@ -47,7 +48,8 @@ After setup, **Grow Tracker** appears in the Home Assistant sidebar:
 
 - One card per occupied location with its plants, phase, week, day and – while flowering – a progress bar and harvest countdown (empty locations are hidden)
 - Click a plant to see its phase and location history, cuttings and notes
-- Change phase or location (with date), add notes and take cuttings directly in the panel
+- Change phase or location (with date), add notes (also for a past time) and take cuttings directly in the panel
+- Edit or delete existing notes
 - Edit the phase history, location history and a mother plant's cuttings log: change entries, remove or add them (corrections do not fire change events)
 - Delete plants (administrators only, with confirmation) – cuttings of a deleted mother plant are kept; deleting a cutting created via *take cuttings* also removes it from its mother's cuttings log
 - Updates live, also when changes come from automations
@@ -60,7 +62,7 @@ You can hide or reorder the entry like any other sidebar item (long-press the si
 
 | Entity | Description |
 |---|---|
-| `sensor.<location>_plants` | Number of plants; attribute `plants` lists name, strain, phase, days |
+| `sensor.<location>_plants` | Number of plants; attribute `plants` lists `name` (strain), `strain` (breeder/cutter), `phenotype`, phase and days |
 
 **Per plant** (device)
 
@@ -112,9 +114,10 @@ target:
   entity_id: select.gelato_1_phase
 data:
   note: "Repotted into 11 L, 1 ml/L nutrients"
+  date: "2026-09-20 18:30:00"   # optional: add a note for a past time
 ```
 
-New cuttings start in phase *rooting*, inherit strain and flowering time from the mother and are
+New cuttings start in phase *rooting*, inherit breeder/cutter, phenotype and flowering time from the mother and are
 placed at the first location of type *propagation* (or the mother's location) unless a location is given.
 
 ## Events

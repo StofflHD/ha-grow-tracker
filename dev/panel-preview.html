@@ -46,14 +46,14 @@
       { id: "l5", name: "Anzuchtbox", type: "propagation" },
     ],
     plants: [
-      plant({ id: "p1", name: "Mutter Gelato", strain: "Gelato", phase: "mother", phase_start: "2026-05-01", grow_start: "2026-03-10",
+      plant({ id: "p1", name: "Gelato #41", strain: "Seed Junky", phenotype: "Pheno #3", phase: "mother", phase_start: "2026-05-01", grow_start: "2026-03-10",
         days_total: 208, days_in_phase: 156, week_in_phase: 23, location_id: "l1", location_name: "Mutterschrank",
         location_start: "2026-03-10", days_at_location: 208, cuttings_taken: 14, cuttings_count: 2, children: ["p3", "p4"],
         history: [{ phase: "germination", start: "2026-03-10" }, { phase: "vegetative", start: "2026-03-17" }, { phase: "mother", start: "2026-05-01" }],
         location_history: [{ location: "Mutterschrank", start: "2026-03-10" }],
         cuttings_log: [{ date: "2026-08-20", count: 8 }, { date: "2026-09-28", count: 6 }],
         notes: [{ date: "2026-09-28T18:30:00+02:00", phase: "mother", day: 202, text: "6 Stecklinge geschnitten, Mutter zurückgeschnitten" }] }),
-      plant({ id: "p2", name: "Northern Lights", strain: "Northern Lights Auto", phase: "flowering", phase_start: "2026-08-23", grow_start: "2026-07-01",
+      plant({ id: "p2", name: "Northern Lights", strain: "Sensi Seeds", phase: "flowering", phase_start: "2026-08-23", grow_start: "2026-07-01",
         days_total: 95, days_in_phase: 42, week_in_phase: 7, location_id: "l2", location_name: "Blüte groß",
         location_start: "2026-08-23", days_at_location: 42, expected_harvest: "2026-10-25", days_to_harvest: 21,
         history: [{ phase: "germination", start: "2026-07-01" }, { phase: "vegetative", start: "2026-07-08" }, { phase: "flowering", start: "2026-08-23" }],
@@ -113,6 +113,18 @@
         setTimeout(window.__push, 10);
         return null;
       }
+      if (msg.type === "grow_tracker/update_note" || msg.type === "grow_tracker/delete_note") {
+        const p = data.plants.find((x) => x.id === msg.plant_id);
+        if (msg.type === "grow_tracker/delete_note") {
+          p.notes = p.notes.filter((n) => n.id !== msg.note_id);
+        } else {
+          const n = p.notes.find((x) => x.id === msg.note_id);
+          n.text = msg.text; n.date = new Date(msg.date).toISOString();
+          p.notes.sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+        setTimeout(window.__push, 10);
+        return null;
+      }
       if (msg.type === "config_entries/subentries/delete") {
         data.plants = data.plants.filter((p) => p.id !== msg.subentry_id);
         data.plants.forEach((p) => { p.children = p.children.filter((c) => c !== msg.subentry_id); p.cuttings_count = p.children.length; });
@@ -131,14 +143,15 @@
       if (svcData.date === "2020-01-01") throw new Error("Datum liegt vor dem aktuellen Eintrag");
       const p = data.plants.find((x) => x.phase_entity_id === svcData.entity_id && x.id === window.__sel);
       if (service === "add_note" && p) {
-        p.notes.push({ date: new Date().toISOString(), phase: p.phase, day: p.days_total, text: svcData.note });
+        p.notes.push({ id: `${p.id}_n${Date.now()}`, date: svcData.date ? new Date(svcData.date).toISOString() : new Date().toISOString(), phase: p.phase, day: p.days_total, text: svcData.note });
+        p.notes.sort((a, b) => new Date(a.date) - new Date(b.date));
       }
       if (service === "set_phase" && p) { p.phase = svcData.phase; p.history.push({ phase: svcData.phase, start: svcData.date }); }
       setTimeout(window.__push, 10);
     },
   };
   // Eindeutige entity_ids
-  data.plants.forEach((p) => { p.phase_entity_id = `select.${p.id}_phase`; });
+  data.plants.forEach((p) => { p.phase_entity_id = `select.${p.id}_phase`; p.notes.forEach((n, i) => { n.id = `${p.id}_n${i}`; }); });
   // Standort-IDs in der Historie (wie vom Server geliefert)
   data.plants.forEach((p) => p.location_history.forEach((h) => {
     h.location_id = data.locations.find((l) => l.name === h.location).id;

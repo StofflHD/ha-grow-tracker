@@ -72,8 +72,9 @@
         "user": {
           "title": "Neue Pflanze",
           "data": {
-            "name": "Name",
-            "strain": "Sorte",
+            "name": "Sorte",
+            "strain": "Breeder/Cutter",
+            "phenotype": "Phänotyp",
             "mother": "Mutterpflanze (bei Stecklingen)",
             "phase": "Aktuelle Phase",
             "location": "Standort",
@@ -81,7 +82,8 @@
             "flower_weeks": "Erwartete Blütedauer (Wochen)"
           },
           "data_description": {
-            "strain": "Bei Stecklingen leer lassen, um die Sorte der Mutter zu übernehmen.",
+            "strain": "Bei Stecklingen leer lassen, um Breeder/Cutter der Mutter zu übernehmen.",
+            "phenotype": "z. B. #3 oder Purple Pheno. Bei Stecklingen leer lassen, um den Phänotyp der Mutter zu übernehmen.",
             "mother": "Leer lassen bei Pflanzen aus Samen.",
             "phase": "Leer lassen: Keimung (Samen) bzw. Bewurzelung (Steckling).",
             "start_date": "Leer lassen für heute."
@@ -90,8 +92,9 @@
         "reconfigure": {
           "title": "Pflanze bearbeiten",
           "data": {
-            "name": "Name",
-            "strain": "Sorte",
+            "name": "Sorte",
+            "strain": "Breeder/Cutter",
+            "phenotype": "Phänotyp",
             "flower_weeks": "Erwartete Blütedauer (Wochen)"
           }
         }
@@ -189,7 +192,8 @@
       "name": "Notiz hinzufügen",
       "description": "Fügt einen Tagebucheintrag hinzu (z. B. Düngung, Training, Beobachtung).",
       "fields": {
-        "note": { "name": "Notiz", "description": "Text des Eintrags." }
+        "note": { "name": "Notiz", "description": "Text des Eintrags." },
+        "date": { "name": "Zeitpunkt", "description": "Zeitpunkt der Notiz (Standard: jetzt). Für nachgetragene Notizen." }
       }
     }
   }

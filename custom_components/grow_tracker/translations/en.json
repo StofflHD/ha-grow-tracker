@@ -72,8 +72,9 @@
         "user": {
           "title": "New plant",
           "data": {
-            "name": "Name",
-            "strain": "Strain",
+            "name": "Strain",
+            "strain": "Breeder/Cutter",
+            "phenotype": "Phenotype",
             "mother": "Mother plant (for cuttings)",
             "phase": "Current phase",
             "location": "Location",
@@ -81,7 +82,8 @@
             "flower_weeks": "Expected flowering time (weeks)"
           },
           "data_description": {
-            "strain": "Leave empty for cuttings to inherit the mother's strain.",
+            "strain": "Leave empty for cuttings to inherit the mother's breeder/cutter.",
+            "phenotype": "e.g. #3 or Purple Pheno. Leave empty for cuttings to inherit the mother's phenotype.",
             "mother": "Leave empty for plants grown from seed.",
             "phase": "Leave empty: germination (seed) or rooting (cutting).",
             "start_date": "Leave empty for today."
@@ -90,8 +92,9 @@
         "reconfigure": {
           "title": "Edit plant",
           "data": {
-            "name": "Name",
-            "strain": "Strain",
+            "name": "Strain",
+            "strain": "Breeder/Cutter",
+            "phenotype": "Phenotype",
             "flower_weeks": "Expected flowering time (weeks)"
           }
         }
@@ -189,7 +192,8 @@
       "name": "Add note",
       "description": "Add a diary entry (e.g. feeding, training, observation).",
       "fields": {
-        "note": { "name": "Note", "description": "Entry text." }
+        "note": { "name": "Note", "description": "Entry text." },
+        "date": { "name": "Time", "description": "Time of the note (default: now). For notes added later." }
       }
     }
   }

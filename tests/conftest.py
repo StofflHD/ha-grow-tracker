@@ -78,6 +78,7 @@ def mock_entry() -> MockConfigEntry:
                 PLANT_MOTHER,
                 "Mutter Gelato",
                 strain="Gelato",
+                phenotype="Pheno #3",
                 phase="mother",
                 location=LOC_MOTHER,
                 start_date=START,

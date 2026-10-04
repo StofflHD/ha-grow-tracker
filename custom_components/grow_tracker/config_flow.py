@@ -40,6 +40,7 @@ from .const import (
     CONF_MOTHER,
     CONF_MOTHER_NAME,
     CONF_PHASE,
+    CONF_PHENOTYPE,
     CONF_START_DATE,
     CONF_STRAIN,
     DEFAULT_FLOWER_WEEKS,
@@ -249,13 +250,17 @@ class PlantSubentryFlow(ConfigSubentryFlow):
             data[CONF_FLOWER_WEEKS] = int(data[CONF_FLOWER_WEEKS])
             if (mother := mothers.get(data.get(CONF_MOTHER, ""))) is not None:
                 data[CONF_MOTHER_NAME] = mother.name
+                # Breeder/Cutter und Phänotyp von der Mutter übernehmen, falls leer
                 if not data.get(CONF_STRAIN) and mother.strain:
                     data[CONF_STRAIN] = mother.strain
+                if not data.get(CONF_PHENOTYPE) and mother.phenotype:
+                    data[CONF_PHENOTYPE] = mother.phenotype
             return self.async_create_entry(title=name, data=data)
 
         fields: dict[Any, Any] = {
             vol.Required(CONF_NAME): TextSelector(),
             vol.Optional(CONF_STRAIN): TextSelector(),
+            vol.Optional(CONF_PHENOTYPE): TextSelector(),
         }
         if mothers:
             fields[vol.Optional(CONF_MOTHER)] = SelectSelector(
@@ -307,14 +312,16 @@ class PlantSubentryFlow(ConfigSubentryFlow):
             name = data.pop(CONF_NAME).strip()
             data[CONF_FLOWER_WEEKS] = int(data[CONF_FLOWER_WEEKS])
             new_data = {**subentry.data, **data}
-            if not data.get(CONF_STRAIN):
-                new_data.pop(CONF_STRAIN, None)
+            for optional in (CONF_STRAIN, CONF_PHENOTYPE):
+                if not data.get(optional):
+                    new_data.pop(optional, None)
             return self.async_update_and_abort(entry, subentry, title=name, data=new_data)
 
         schema = vol.Schema(
             {
                 vol.Required(CONF_NAME): TextSelector(),
                 vol.Optional(CONF_STRAIN): TextSelector(),
+                vol.Optional(CONF_PHENOTYPE): TextSelector(),
                 vol.Required(CONF_FLOWER_WEEKS): FLOWER_WEEKS_SELECTOR,
             }
         )
@@ -325,6 +332,7 @@ class PlantSubentryFlow(ConfigSubentryFlow):
                 {
                     CONF_NAME: subentry.title,
                     CONF_STRAIN: subentry.data.get(CONF_STRAIN),
+                    CONF_PHENOTYPE: subentry.data.get(CONF_PHENOTYPE),
                     CONF_FLOWER_WEEKS: subentry.data.get(
                         CONF_FLOWER_WEEKS, DEFAULT_FLOWER_WEEKS
                     ),
