@@ -3,7 +3,7 @@
 Track your plants through every phase of the grow – from seed or cutting to curing –
 across all of your grow locations (tents, cabinets, chambers).
 
-*Deutsch und Englisch werden in der Oberfläche unterstützt.*
+*The user interface is available in English and German.*
 
 ## Features
 
