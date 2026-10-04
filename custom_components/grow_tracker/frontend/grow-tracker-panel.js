@@ -71,6 +71,8 @@ const I18N = {
     cutting_one: "1 cutting",
     no_cuttings: "No cuttings at the moment",
     edit_log: "Edit",
+    expand: "Show cuttings",
+    collapse: "Hide cuttings",
     phenotype: "Phenotype",
     breeder: "Breeder/Cutter",
     note_time: "Time",
@@ -160,6 +162,8 @@ const I18N = {
     cutting_one: "1 Steckling",
     no_cuttings: "Aktuell keine Stecklinge",
     edit_log: "Bearbeiten",
+    expand: "Stecklinge anzeigen",
+    collapse: "Stecklinge ausblenden",
     phenotype: "Phänotyp",
     breeder: "Breeder/Cutter",
     note_time: "Zeitpunkt",
@@ -226,6 +230,8 @@ class GrowTrackerPanel extends HTMLElement {
     this._selectedId = null;
     this._unsub = null;
     this._built = false;
+    // Aufgeklappte Stecklings-Gruppen (bleiben bei Live-Updates offen)
+    this._expanded = new Set();
   }
 
   // --- Eigenschaften, die Home Assistant setzt ------------------------------
@@ -374,6 +380,14 @@ class GrowTrackerPanel extends HTMLElement {
       if (ev.target.id === "overlay") this._closeDialog();
     });
     this.shadowRoot.getElementById("main").addEventListener("click", (ev) => {
+      const group = ev.target.closest("[data-group]");
+      if (group) {
+        const key = group.dataset.group;
+        if (this._expanded.has(key)) this._expanded.delete(key);
+        else this._expanded.add(key);
+        this._renderMain();
+        return;
+      }
       const row = ev.target.closest("[data-plant]");
       if (row) this._openDialog(row.dataset.plant);
     });
@@ -435,7 +449,7 @@ class GrowTrackerPanel extends HTMLElement {
     const hidden = this._data.locations.length - occupied.length;
 
     const cards = occupied.map(({ loc, plants: here }) =>
-      this._locationCard(loc.name, this._t(`location_types.${loc.type}`), here)
+      this._locationCard(loc.name, this._t(`location_types.${loc.type}`), here, loc.id)
     );
     const known = new Set(this._data.locations.map((l) => l.id));
     const homeless = plants.filter((p) => !known.has(p.location_id));
@@ -459,12 +473,34 @@ class GrowTrackerPanel extends HTMLElement {
     `;
   }
 
-  _locationCard(name, typeLabel, plants) {
+  _locationCard(name, typeLabel, plants, cardKey = "") {
     const order = (p) => PHASES.indexOf(p.phase);
-    const rows = plants
-      .slice()
-      .sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name))
-      .map((p) => this._plantRow(p))
+    const byName = (a, b) => a.localeCompare(b, undefined, { numeric: true });
+
+    // Stecklinge derselben Mutter in derselben Phase zu einer Gruppe zusammenfassen
+    const groups = new Map();
+    const items = [];
+    for (const p of plants) {
+      const mother = p.mother_id || p.mother_name;
+      if (p.origin === "cutting" && mother) {
+        const key = `${cardKey}|${mother}|${p.phase}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(p);
+      } else {
+        items.push({ phase: order(p), name: p.name, html: this._plantRow(p) });
+      }
+    }
+    for (const [key, members] of groups) {
+      const first = members[0];
+      items.push(
+        members.length === 1
+          ? { phase: order(first), name: first.name, html: this._plantRow(first) }
+          : { phase: order(first), name: this._groupTitle(first), html: this._groupRow(key, members) }
+      );
+    }
+    const rows = items
+      .sort((a, b) => a.phase - b.phase || byName(a.name, b.name))
+      .map((item) => item.html)
       .join("");
     return `
       <section class="card">
@@ -478,6 +514,68 @@ class GrowTrackerPanel extends HTMLElement {
         ${rows || `<div class="secondary pad">${esc(this._t("no_plants"))}</div>`}
       </section>
     `;
+  }
+
+  _groupTitle(cutting) {
+    // Sorte der Mutter (aktueller Name, sonst der beim Steckling hinterlegte)
+    return this._plant(cutting.mother_id)?.name || cutting.mother_name || cutting.name;
+  }
+
+  _groupRow(key, members) {
+    const first = members[0];
+    const expanded = this._expanded.has(key);
+    const range = (values) => {
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      return min === max ? `${min}` : `${min}–${max}`;
+    };
+
+    let extra = "";
+    if (first.phase === "flowering") {
+      // Fortschritt der am weitesten entwickelten, Erntetext der frühesten Pflanze
+      const pct = Math.max(
+        ...members.map((m) => (m.flower_weeks ? Math.min(100, Math.round((m.days_in_phase / (m.flower_weeks * 7)) * 100)) : 0))
+      );
+      const soonest = members
+        .filter((m) => m.days_to_harvest !== null && m.days_to_harvest !== undefined)
+        .sort((a, b) => a.days_to_harvest - b.days_to_harvest)[0];
+      extra = `
+        <div class="progress"><div style="width:${pct}%"></div></div>
+        ${soonest ? `<div class="secondary small">${esc(this._harvestText(soonest))}</div>` : ""}`;
+    }
+
+    const details = [this._t("cuttings", { n: members.length }), first.phenotype, first.strain]
+      .filter(Boolean)
+      .map(esc)
+      .join(" · ");
+    const memberRows = expanded
+      ? `<div class="group-members">${members
+          .slice()
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+          .map((m) => this._plantRow(m))
+          .join("")}</div>`
+      : "";
+
+    return `
+      <div class="group">
+        <button class="plant group-head" data-group="${esc(key)}" aria-expanded="${expanded}"
+          title="${esc(this._t(expanded ? "collapse" : "expand"))}">
+          <span class="dot" style="background:${PHASE_COLORS[first.phase]}"></span>
+          <span class="plant-main">
+            <span class="plant-name">${esc(this._groupTitle(first))} <span class="count-badge">✂ ×${members.length}</span></span>
+            <span class="secondary small">${details}</span>
+            ${extra}
+          </span>
+          <span class="plant-side">
+            ${this._phaseChip(first.phase)}
+            <span class="secondary small">${esc(this._t("week"))} ${range(members.map((m) => m.week_in_phase))} · ${esc(
+      this._t("day")
+    )} ${range(members.map((m) => m.days_total))}</span>
+          </span>
+          <span class="chevron" aria-hidden="true">${expanded ? "▾" : "▸"}</span>
+        </button>
+        ${memberRows}
+      </div>`;
   }
 
   _plantRow(p) {
@@ -1194,6 +1292,19 @@ const STYLES = `
   }
   .plant:hover, .plant:focus-visible { background: var(--secondary-background-color); outline: none; }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .count-badge {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 6px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--secondary-background-color);
+    color: var(--secondary-text-color);
+  }
+  .chevron { flex: none; width: 20px; text-align: center; font-size: 18px; color: var(--secondary-text-color); }
+  .group-members { background: color-mix(in srgb, var(--secondary-background-color) 50%, transparent); }
+  .group-members .plant { padding-left: 38px; }
   .plant-main { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .plant-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .plant-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }

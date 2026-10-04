@@ -150,6 +150,33 @@
       setTimeout(window.__push, 10);
     },
   };
+  // Weitere Stecklinge der Mutter p1 (für die Gruppierung)
+  const cutting = (id, n, o) => plant(Object.assign({
+    id, name: `Mutter Gelato #${n}`, strain: "Seed Junky", phenotype: "Pheno #3", origin: "cutting",
+    logged_cutting: true, mother_id: "p1", mother_name: "Gelato #41", notes: [],
+  }, o));
+  data.plants.push(
+    cutting("p6", 3, { phase: "flowering", phase_start: "2026-09-12", grow_start: "2026-08-20", days_total: 45,
+      days_in_phase: 22, week_in_phase: 4, location_id: "l2", location_name: "Blüte groß", location_start: "2026-09-12",
+      days_at_location: 22, expected_harvest: "2026-11-14", days_to_harvest: 41,
+      history: [{ phase: "rooting", start: "2026-08-20" }, { phase: "flowering", start: "2026-09-12" }],
+      location_history: [{ location: "Blüte groß", start: "2026-09-12" }] }),
+    cutting("p7", 4, { phase: "flowering", phase_start: "2026-09-08", grow_start: "2026-08-18", days_total: 47,
+      days_in_phase: 26, week_in_phase: 4, location_id: "l2", location_name: "Blüte groß", location_start: "2026-09-08",
+      days_at_location: 26, expected_harvest: "2026-11-10", days_to_harvest: 37,
+      history: [{ phase: "rooting", start: "2026-08-18" }, { phase: "flowering", start: "2026-09-08" }],
+      location_history: [{ location: "Blüte groß", start: "2026-09-08" }] }),
+    cutting("p8", 5, { phase: "rooting", phase_start: "2026-09-28", grow_start: "2026-09-28", days_total: 6,
+      days_in_phase: 6, week_in_phase: 1, location_id: "l1", location_name: "Mutterschrank", location_start: "2026-09-28",
+      days_at_location: 6, history: [{ phase: "rooting", start: "2026-09-28" }],
+      location_history: [{ location: "Mutterschrank", start: "2026-09-28" }] }),
+    cutting("p9", 6, { phase: "rooting", phase_start: "2026-09-28", grow_start: "2026-09-28", days_total: 6,
+      days_in_phase: 6, week_in_phase: 1, location_id: "l1", location_name: "Mutterschrank", location_start: "2026-09-28",
+      days_at_location: 6, history: [{ phase: "rooting", start: "2026-09-28" }],
+      location_history: [{ location: "Mutterschrank", start: "2026-09-28" }] }),
+  );
+  const mother = data.plants.find((p) => p.id === "p1");
+  mother.children = ["p3", "p4", "p6", "p7", "p8", "p9"]; mother.cuttings_count = 6;
   // Eindeutige entity_ids
   data.plants.forEach((p) => { p.phase_entity_id = `select.${p.id}_phase`; p.notes.forEach((n, i) => { n.id = `${p.id}_n${i}`; }); });
   // Standort-IDs in der Historie (wie vom Server geliefert)
