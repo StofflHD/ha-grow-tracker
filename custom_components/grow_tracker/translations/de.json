@@ -91,6 +91,7 @@
         },
         "reconfigure": {
           "title": "Pflanze bearbeiten",
+          "description": "Geänderte Felder werden an die Stecklinge dieser Pflanze weitergegeben, sofern dort noch der bisherige Wert steht. Automatisch benannte Stecklinge werden mit umbenannt.",
           "data": {
             "name": "Sorte",
             "strain": "Breeder/Cutter",

@@ -91,6 +91,7 @@
         },
         "reconfigure": {
           "title": "Edit plant",
+          "description": "Changed fields are passed on to the cuttings of this plant as long as they still have the previous value. Automatically named cuttings are renamed as well.",
           "data": {
             "name": "Strain",
             "strain": "Breeder/Cutter",

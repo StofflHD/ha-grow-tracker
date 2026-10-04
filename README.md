@@ -117,6 +117,10 @@ data:
   date: "2026-09-20 18:30:00"   # optional: add a note for a past time
 ```
 
+When a mother plant is edited (⋮ → *Reconfigure*), changed breeder/cutter, phenotype and flowering time are passed on to
+its cuttings (and their cuttings) as long as they still have the mother's previous value; automatically named cuttings
+(`<mother> #n`) are renamed with her.
+
 New cuttings start in phase *rooting*, inherit breeder/cutter, phenotype and flowering time from the mother and are
 placed at the first location of type *propagation* (or the mother's location) unless a location is given.
 

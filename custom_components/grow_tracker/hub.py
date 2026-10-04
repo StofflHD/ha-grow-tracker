@@ -15,7 +15,12 @@ from homeassistant.helpers.storage import Store
 
 from .const import (
     CONF_AREA,
+    CONF_FLOWER_WEEKS,
     CONF_LOCATION_TYPE,
+    CONF_MOTHER,
+    CONF_MOTHER_NAME,
+    CONF_PHENOTYPE,
+    CONF_STRAIN,
     DOMAIN,
     LOCATION_TYPE_OTHER,
     LOCATION_TYPE_PROPAGATION,
@@ -27,6 +32,60 @@ from .const import (
     SUBENTRY_PLANT,
 )
 from .plant import GrowPlant
+
+# Felder, die von der Mutter an ihre Stecklinge weitergegeben werden
+PROPAGATED_FIELDS = (CONF_STRAIN, CONF_PHENOTYPE, CONF_FLOWER_WEEKS)
+
+
+@callback
+def async_propagate_to_cuttings(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    mother_id: str,
+    old_title: str,
+    old_data: dict[str, Any],
+    new_title: str,
+    new_data: dict[str, Any],
+) -> int:
+    """Geänderte Stammdaten einer Mutter an ihre Stecklinge (rekursiv) weitergeben.
+
+    Ein Feld wird nur übernommen, wenn der Steckling noch den alten Wert der Mutter
+    hat (geerbt) – individuell geänderte Werte bleiben erhalten. Automatisch
+    benannte Stecklinge ("<Mutter> #n") werden mit umbenannt.
+    Gibt die Anzahl geänderter Stecklinge zurück.
+    """
+    changed = 0
+    for child in list(entry.subentries.values()):
+        if child.subentry_type != SUBENTRY_PLANT or child.data.get(CONF_MOTHER) != mother_id:
+            continue
+
+        data = dict(child.data)
+        for key in PROPAGATED_FIELDS:
+            old, new = old_data.get(key), new_data.get(key)
+            if old == new or data.get(key) not in (old, None):
+                continue
+            if new is None:
+                data.pop(key, None)
+            else:
+                data[key] = new
+        data[CONF_MOTHER_NAME] = new_title
+
+        title = child.title
+        if new_title != old_title:
+            if title == old_title:
+                title = new_title
+            elif title.startswith(f"{old_title} #"):
+                title = new_title + title[len(old_title) :]
+
+        if data == dict(child.data) and title == child.title:
+            continue
+        # Erst die Stecklinge des Stecklings (mit dessen alten Werten), dann ihn selbst
+        changed += async_propagate_to_cuttings(
+            hass, entry, child.subentry_id, child.title, dict(child.data), title, data
+        )
+        hass.config_entries.async_update_subentry(entry, child, data=data, title=title)
+        changed += 1
+    return changed
 
 
 class GrowLocation:

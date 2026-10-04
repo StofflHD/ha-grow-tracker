@@ -57,6 +57,7 @@ from .const import (
     SUBENTRY_LOCATION,
     SUBENTRY_PLANT,
 )
+from .hub import async_propagate_to_cuttings
 
 FLOWER_WEEKS_SELECTOR = NumberSelector(
     NumberSelectorConfig(min=4, max=16, step=1, mode=NumberSelectorMode.BOX)
@@ -315,7 +316,27 @@ class PlantSubentryFlow(ConfigSubentryFlow):
             for optional in (CONF_STRAIN, CONF_PHENOTYPE):
                 if not data.get(optional):
                     new_data.pop(optional, None)
-            return self.async_update_and_abort(entry, subentry, title=name, data=new_data)
+
+            # Während Mutter und Stecklinge aktualisiert werden, nur einmal am Ende neu laden
+            hub = entry.runtime_data if entry.state is ConfigEntryState.LOADED else None
+            if hub is not None:
+                hub.reload_pending = True
+            updated = async_propagate_to_cuttings(
+                self.hass,
+                entry,
+                subentry.subentry_id,
+                subentry.title,
+                dict(subentry.data),
+                name,
+                new_data,
+            )
+            result = self.async_update_and_abort(entry, subentry, title=name, data=new_data)
+            if hub is not None:
+                if updated:
+                    self.hass.config_entries.async_schedule_reload(entry.entry_id)
+                else:
+                    hub.reload_pending = False
+            return result
 
         schema = vol.Schema(
             {
