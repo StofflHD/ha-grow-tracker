@@ -120,6 +120,77 @@ async def test_ws_after_deleting_mother(
     assert cutting["mother_name"] == "Mutter Gelato"
 
 
+async def test_ws_set_cuttings_log(
+    hass: HomeAssistant, setup_entry: MockConfigEntry, hass_ws_client: WebSocketGenerator
+) -> None:
+    assert await async_setup_component(hass, "websocket_api", {})
+    client = await hass_ws_client(hass)
+    mother = setup_entry.runtime_data.plants[PLANT_MOTHER]
+
+    await client.send_json_auto_id(
+        {
+            "type": "grow_tracker/set_cuttings_log",
+            "plant_id": PLANT_MOTHER,
+            "log": [{"date": "2026-09-10", "count": 5}, {"date": "2026-08-01", "count": "3"}],
+        }
+    )
+    assert (await client.receive_json())["success"]
+    # Nach Datum sortiert, Anzahl als Zahl
+    assert mother.cuttings_log == [
+        {"date": "2026-08-01", "count": 3},
+        {"date": "2026-09-10", "count": 5},
+    ]
+    sensor = hass.states.get(
+        er.async_get(hass).async_get_entity_id("sensor", "grow_tracker", f"{PLANT_MOTHER}_cuttings_taken")
+    )
+    assert sensor.attributes["taken_total"] == 8
+
+    # Leeres Protokoll ist erlaubt
+    await client.send_json_auto_id(
+        {"type": "grow_tracker/set_cuttings_log", "plant_id": PLANT_MOTHER, "log": []}
+    )
+    assert (await client.receive_json())["success"]
+    assert mother.cuttings_log == []
+
+
+@pytest.mark.parametrize(
+    ("entry", "error"),
+    [
+        ({"date": "2026-09-20", "count": 1}, "invalid_format"),  # Zukunft
+        ({"date": "2026-09-10", "count": 0}, "invalid_format"),
+        ({"date": "kein-datum", "count": 1}, "invalid_format"),
+    ],
+)
+async def test_ws_set_cuttings_log_invalid(
+    hass: HomeAssistant,
+    setup_entry: MockConfigEntry,
+    hass_ws_client: WebSocketGenerator,
+    entry: dict,
+    error: str,
+) -> None:
+    assert await async_setup_component(hass, "websocket_api", {})
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "grow_tracker/set_cuttings_log", "plant_id": PLANT_MOTHER, "log": [entry]}
+    )
+    result = await client.receive_json()
+    assert not result["success"]
+    assert result["error"]["code"] == error
+    assert setup_entry.runtime_data.plants[PLANT_MOTHER].cuttings_log == []
+
+
+async def test_ws_set_cuttings_log_unknown_plant(
+    hass: HomeAssistant, setup_entry: MockConfigEntry, hass_ws_client: WebSocketGenerator
+) -> None:
+    assert await async_setup_component(hass, "websocket_api", {})
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "grow_tracker/set_cuttings_log", "plant_id": "gibt_es_nicht", "log": []}
+    )
+    result = await client.receive_json()
+    assert result["error"]["code"] == "not_found"
+
+
 async def test_ws_not_loaded(hass: HomeAssistant, hass_ws_client: WebSocketGenerator) -> None:
     assert await async_setup_component(hass, "grow_tracker", {})
     assert await async_setup_component(hass, "websocket_api", {})

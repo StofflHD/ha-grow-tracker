@@ -8,10 +8,12 @@ import voluptuous as vol
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.util import dt as dt_util
 
-from .const import DATA_HUB, SIGNAL_PANEL_UPDATE, WS_SUBSCRIBE
+from .const import DATA_HUB, SIGNAL_PANEL_UPDATE, WS_SET_CUTTINGS_LOG, WS_SUBSCRIBE
 from .hub import GrowHub
 from .plant import GrowPlant
 
@@ -19,6 +21,37 @@ from .plant import GrowPlant
 @callback
 def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_subscribe)
+    websocket_api.async_register_command(hass, ws_set_cuttings_log)
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_SET_CUTTINGS_LOG,
+        vol.Required("plant_id"): str,
+        vol.Required("log"): [
+            {
+                vol.Required("date"): cv.date,
+                vol.Required("count"): vol.All(vol.Coerce(int), vol.Range(min=1, max=1000)),
+            }
+        ],
+    }
+)
+@websocket_api.async_response
+async def ws_set_cuttings_log(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Schnitt-Protokoll einer Pflanze ersetzen."""
+    hub: GrowHub | None = hass.data.get(DATA_HUB)
+    plant = hub.plants.get(msg["plant_id"]) if hub else None
+    if plant is None:
+        connection.send_error(msg["id"], websocket_api.ERR_NOT_FOUND, "Unknown plant")
+        return
+    try:
+        await plant.async_set_cuttings_log(msg["log"])
+    except ServiceValidationError as err:
+        connection.send_error(msg["id"], websocket_api.ERR_INVALID_FORMAT, str(err))
+        return
+    connection.send_result(msg["id"])
 
 
 @websocket_api.websocket_command({vol.Required("type"): WS_SUBSCRIBE})
@@ -90,7 +123,8 @@ def _plant(plant: GrowPlant) -> dict[str, Any]:
         "location_history": plant.location_history_named(),
         "cuttings_count": len(plant.children()),
         "cuttings_taken": plant.cuttings_taken,
-        "cuttings_log": plant.cuttings_log[-20:],
+        # Vollständig, da das Panel das Protokoll als Ganzes bearbeitet und zurückschreibt
+        "cuttings_log": plant.cuttings_log,
         "children": [child.subentry_id for child in plant.children()],
         "notes": plant.data["notes"][-50:],
         "phase_entity_id": plant.phase_entity_id,

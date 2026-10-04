@@ -128,6 +128,22 @@ class GrowPlant:
     def children(self) -> list[GrowPlant]:
         return [p for p in self.hub.plants.values() if p.mother_id == self.subentry_id]
 
+    async def async_set_cuttings_log(self, entries: list[dict[str, Any]]) -> None:
+        """Schnitt-Protokoll komplett ersetzen (Bearbeiten im Panel)."""
+        today = _today()
+        log: list[dict[str, Any]] = []
+        for entry in entries:
+            cut_date: date = entry["date"]
+            count = int(entry["count"])
+            if cut_date > today:
+                raise ServiceValidationError("Schnittdatum liegt in der Zukunft")
+            if count < 1:
+                raise ServiceValidationError("Anzahl muss mindestens 1 sein")
+            log.append({"date": cut_date.isoformat(), "count": count})
+        log.sort(key=lambda item: item["date"])
+        self.data["cuttings"] = log
+        await self.hub.async_save_and_notify()
+
     def remove_logged_cutting(self, cut_date: date) -> bool:
         """Einen Steckling aus dem Schnitt-Protokoll austragen.
 

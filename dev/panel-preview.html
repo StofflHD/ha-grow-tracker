@@ -88,6 +88,14 @@
     user: { is_admin: params.get("admin") !== "0" },
     async callWS(msg) {
       window.serviceCalls.push(msg);
+      if (msg.type === "grow_tracker/set_cuttings_log") {
+        if (msg.log.some((e) => e.date > data.today)) throw new Error("Schnittdatum liegt in der Zukunft");
+        const p = data.plants.find((x) => x.id === msg.plant_id);
+        p.cuttings_log = msg.log.slice().sort((a, b) => a.date.localeCompare(b.date));
+        p.cuttings_taken = p.cuttings_log.reduce((s, e) => s + e.count, 0);
+        setTimeout(window.__push, 10);
+        return null;
+      }
       if (msg.type === "config_entries/subentries/delete") {
         data.plants = data.plants.filter((p) => p.id !== msg.subentry_id);
         data.plants.forEach((p) => { p.children = p.children.filter((c) => c !== msg.subentry_id); p.cuttings_count = p.children.length; });

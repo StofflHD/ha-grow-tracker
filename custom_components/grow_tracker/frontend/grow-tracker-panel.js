@@ -70,6 +70,11 @@ const I18N = {
     tracked_cuttings: "Cuttings",
     cutting_one: "1 cutting",
     no_cuttings: "No cuttings at the moment",
+    edit_log: "Edit",
+    log_empty: "No entries yet",
+    add_entry: "Add entry",
+    remove_entry: "Remove entry",
+    log_invalid: "Every entry needs a date (not in the future) and a count of at least 1.",
     no_notes: "No notes yet",
     edit: "Edit plant",
     close: "Close",
@@ -144,6 +149,11 @@ const I18N = {
     tracked_cuttings: "Stecklinge",
     cutting_one: "1 Steckling",
     no_cuttings: "Aktuell keine Stecklinge",
+    edit_log: "Bearbeiten",
+    log_empty: "Noch keine Einträge",
+    add_entry: "Eintrag hinzufügen",
+    remove_entry: "Eintrag entfernen",
+    log_invalid: "Jeder Eintrag braucht ein Datum (nicht in der Zukunft) und eine Anzahl von mindestens 1.",
     no_notes: "Noch keine Notizen",
     edit: "Pflanze bearbeiten",
     close: "Schließen",
@@ -484,6 +494,7 @@ class GrowTrackerPanel extends HTMLElement {
 
   _openDialog(id) {
     this._selectedId = id;
+    this._logDraft = null;
     this.shadowRoot.getElementById("overlay").classList.remove("hidden");
     this._renderDialogInfo();
     this._renderDialogForms();
@@ -492,12 +503,15 @@ class GrowTrackerPanel extends HTMLElement {
 
   _closeDialog() {
     this._selectedId = null;
+    this._logDraft = null;
     this.shadowRoot.getElementById("overlay").classList.add("hidden");
   }
 
   _renderDialogInfo() {
     const p = this._plant(this._selectedId);
     if (!p) return;
+    // Während das Schnitt-Protokoll bearbeitet wird, keine Live-Updates (Eingaben bleiben erhalten)
+    if (this._logDraft) return;
     this.shadowRoot.getElementById("dlg-title").innerHTML = `
       <div class="dlg-name">${esc(p.name)}</div>
       <div class="secondary">${[p.strain, p.location_name].filter(Boolean).map(esc).join(" · ")}</div>`;
@@ -549,12 +563,7 @@ class GrowTrackerPanel extends HTMLElement {
       : `<li class="secondary">${esc(this._t("no_notes"))}</li>`;
 
     let cuttings = "";
-    if (p.cuttings_taken || p.children.length) {
-      const log = p.cuttings_log
-        .slice()
-        .reverse()
-        .map((c) => `<li><b>${esc(this._t("cuttings", { n: c.count }))}</b><span>${this._date(c.date)}</span></li>`)
-        .join("");
+    if (p.phase === "mother" || p.cuttings_log.length || p.children.length) {
       const children = p.children
         .map((id) => this._plant(id))
         .filter(Boolean)
@@ -567,7 +576,11 @@ class GrowTrackerPanel extends HTMLElement {
       cuttings = `
         <h3>${esc(this._t("tracked_cuttings"))} (${p.cuttings_count})</h3>
         <ul class="list">${children || `<li class="secondary">${esc(this._t("no_cuttings"))}</li>`}</ul>
-        ${log ? `<h3>${esc(this._t("cuttings_log"))}</h3><ul class="list">${log}</ul>` : ""}`;
+        <div class="section-head">
+          <h3>${esc(this._t("cuttings_log"))}</h3>
+          <button class="text-button small-button" id="log-edit">${esc(this._t("edit_log"))}</button>
+        </div>
+        <div id="log-area"></div>`;
     }
 
     this.shadowRoot.getElementById("dlg-info").innerHTML = `
@@ -581,6 +594,127 @@ class GrowTrackerPanel extends HTMLElement {
       <h3>${esc(this._t("notes"))}</h3>
       <ul class="list notes">${notes}</ul>
     `;
+    this._renderLogArea();
+  }
+
+  // --- Schnitt-Protokoll (Anzeige / Bearbeiten) --------------------------------
+
+  _renderLogArea() {
+    const area = this.shadowRoot.getElementById("log-area");
+    const p = this._plant(this._selectedId);
+    if (!area || !p) return;
+    const editButton = this.shadowRoot.getElementById("log-edit");
+
+    if (!this._logDraft) {
+      editButton.hidden = false;
+      editButton.onclick = () => {
+        this._logDraft = p.cuttings_log.map((c) => ({ date: c.date, count: c.count }));
+        if (!this._logDraft.length) this._logDraft.push({ date: this._data.today, count: 1 });
+        this._renderLogArea();
+      };
+      area.innerHTML = p.cuttings_log.length
+        ? `<ul class="list">${p.cuttings_log
+            .slice()
+            .reverse()
+            .map(
+              (c) =>
+                `<li><b>${esc(this._t(c.count === 1 ? "cutting_one" : "cuttings", { n: c.count }))}</b><span>${this._date(
+                  c.date
+                )}</span></li>`
+            )
+            .join("")}</ul>`
+        : `<ul class="list"><li class="secondary">${esc(this._t("log_empty"))}</li></ul>`;
+      return;
+    }
+
+    editButton.hidden = true;
+    const today = this._data.today;
+    const rows = this._logDraft
+      .map(
+        (row, i) => `
+        <div class="log-row" data-index="${i}">
+          <input type="date" name="date" value="${esc(row.date)}" max="${today}" required
+            aria-label="${esc(this._t("date"))}">
+          <input type="number" name="count" value="${esc(row.count)}" min="1" max="1000" required
+            aria-label="${esc(this._t("count"))}">
+          <button type="button" class="icon-button" data-remove="${i}"
+            aria-label="${esc(this._t("remove_entry"))}" title="${esc(this._t("remove_entry"))}">✕</button>
+        </div>`
+      )
+      .join("");
+    area.innerHTML = `
+      <form class="log-editor" id="log-form" novalidate>
+        <div class="log-row log-labels secondary small" aria-hidden="true">
+          <span>${esc(this._t("date"))}</span><span>${esc(this._t("count"))}</span><span></span>
+        </div>
+        ${rows || `<div class="secondary small">${esc(this._t("log_empty"))}</div>`}
+        <button type="button" class="text-button small-button" id="log-add">+ ${esc(this._t("add_entry"))}</button>
+        <div class="status" id="log-status" role="status"></div>
+        <div class="confirm-buttons">
+          <button type="button" class="text-button" id="log-cancel">${esc(this._t("cancel"))}</button>
+          <button type="submit" class="primary">${esc(this._t("save"))}</button>
+        </div>
+      </form>`;
+
+    const form = area.querySelector("#log-form");
+    form.querySelectorAll("[data-remove]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        this._syncLogDraft();
+        this._logDraft.splice(Number(btn.dataset.remove), 1);
+        this._renderLogArea();
+      })
+    );
+    form.querySelector("#log-add").addEventListener("click", () => {
+      this._syncLogDraft();
+      this._logDraft.push({ date: today, count: 1 });
+      this._renderLogArea();
+      const inputs = area.querySelectorAll('input[name="count"]');
+      inputs[inputs.length - 1]?.focus();
+    });
+    form.querySelector("#log-cancel").addEventListener("click", () => {
+      this._logDraft = null;
+      this._renderDialogInfo();
+    });
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      this._saveLog(p);
+    });
+  }
+
+  _syncLogDraft() {
+    const area = this.shadowRoot.getElementById("log-area");
+    this._logDraft = [...area.querySelectorAll(".log-row[data-index]")].map((row) => ({
+      date: row.querySelector('input[name="date"]').value,
+      count: Number(row.querySelector('input[name="count"]').value),
+    }));
+  }
+
+  async _saveLog(plant) {
+    this._syncLogDraft();
+    const status = this.shadowRoot.getElementById("log-status");
+    const invalid = this._logDraft.some(
+      (row) => !row.date || row.date > this._data.today || !Number.isInteger(row.count) || row.count < 1
+    );
+    if (invalid) {
+      status.className = "status error";
+      status.textContent = this._t("log_invalid");
+      return;
+    }
+    const buttons = this.shadowRoot.querySelectorAll("#log-form button");
+    buttons.forEach((b) => (b.disabled = true));
+    try {
+      await this._hass.callWS({
+        type: "grow_tracker/set_cuttings_log",
+        plant_id: plant.id,
+        log: this._logDraft,
+      });
+      this._logDraft = null;
+      this._renderDialogInfo();
+    } catch (err) {
+      status.className = "status error";
+      status.textContent = err?.message || String(err);
+      buttons.forEach((b) => (b.disabled = false));
+    }
   }
 
   _renderDialogForms() {
@@ -920,6 +1054,18 @@ const STYLES = `
     border-bottom: 1px solid var(--divider-color);
   }
   .list li.note { display: block; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .section-head h3 { margin-bottom: 8px; }
+  .dialog .small-button { padding: 4px 8px; font-size: 12px; margin-top: 12px; }
+  .log-editor { display: flex; flex-direction: column; gap: 8px; }
+  .log-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 96px 40px;
+    gap: 8px;
+    align-items: center;
+  }
+  .log-labels { margin-bottom: -4px; }
+  .log-editor .small-button { align-self: flex-start; margin-top: 0; }
   .notes { max-height: 280px; overflow-y: auto; }
   .link { color: var(--primary-color); cursor: pointer; text-decoration: underline; }
   .forms {
