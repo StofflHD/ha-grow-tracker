@@ -96,6 +96,23 @@
         setTimeout(window.__push, 10);
         return null;
       }
+      if (msg.type === "grow_tracker/set_history") {
+        if (msg.history.some((e) => e.start > data.today)) throw new Error("Datum liegt in der Zukunft");
+        const p = data.plants.find((x) => x.id === msg.plant_id);
+        const sorted = msg.history.slice().sort((a, b) => a.start.localeCompare(b.start));
+        if (msg.kind === "phase") {
+          p.history = sorted.map((e) => ({ phase: e.value, start: e.start }));
+          p.phase = p.history[p.history.length - 1].phase;
+        } else {
+          p.location_history = sorted.map((e) => ({
+            location_id: e.value, location: data.locations.find((l) => l.id === e.value).name, start: e.start,
+          }));
+          const lastLoc = p.location_history[p.location_history.length - 1];
+          p.location_id = lastLoc.location_id; p.location_name = lastLoc.location;
+        }
+        setTimeout(window.__push, 10);
+        return null;
+      }
       if (msg.type === "config_entries/subentries/delete") {
         data.plants = data.plants.filter((p) => p.id !== msg.subentry_id);
         data.plants.forEach((p) => { p.children = p.children.filter((c) => c !== msg.subentry_id); p.cuttings_count = p.children.length; });
@@ -122,6 +139,10 @@
   };
   // Eindeutige entity_ids
   data.plants.forEach((p) => { p.phase_entity_id = `select.${p.id}_phase`; });
+  // Standort-IDs in der Historie (wie vom Server geliefert)
+  data.plants.forEach((p) => p.location_history.forEach((h) => {
+    h.location_id = data.locations.find((l) => l.name === h.location).id;
+  }));
 </script>
 <script src="../custom_components/grow_tracker/frontend/grow-tracker-panel.js"></script>
 <script>

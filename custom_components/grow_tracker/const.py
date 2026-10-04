@@ -79,6 +79,7 @@ PANEL_TITLE = "Grow Tracker"
 STATIC_URL = "/grow_tracker_static"
 WS_SUBSCRIBE = f"{DOMAIN}/subscribe"
 WS_SET_CUTTINGS_LOG = f"{DOMAIN}/set_cuttings_log"
+WS_SET_HISTORY = f"{DOMAIN}/set_history"
 
 EVENT_PHASE_CHANGED = f"{DOMAIN}_phase_changed"
 EVENT_LOCATION_CHANGED = f"{DOMAIN}_location_changed"

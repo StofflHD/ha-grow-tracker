@@ -75,6 +75,9 @@ const I18N = {
     add_entry: "Add entry",
     remove_entry: "Remove entry",
     log_invalid: "Every entry needs a date (not in the future) and a count of at least 1.",
+    history_invalid: "At least one entry is needed, each with a date that is not in the future.",
+    phase: "Phase",
+    start: "Start",
     no_notes: "No notes yet",
     edit: "Edit plant",
     close: "Close",
@@ -154,6 +157,9 @@ const I18N = {
     add_entry: "Eintrag hinzufügen",
     remove_entry: "Eintrag entfernen",
     log_invalid: "Jeder Eintrag braucht ein Datum (nicht in der Zukunft) und eine Anzahl von mindestens 1.",
+    history_invalid: "Mindestens ein Eintrag ist nötig, jeder mit einem Datum, das nicht in der Zukunft liegt.",
+    phase: "Phase",
+    start: "Beginn",
     no_notes: "Noch keine Notizen",
     edit: "Pflanze bearbeiten",
     close: "Schließen",
@@ -494,7 +500,7 @@ class GrowTrackerPanel extends HTMLElement {
 
   _openDialog(id) {
     this._selectedId = id;
-    this._logDraft = null;
+    this._edit = null;
     this.shadowRoot.getElementById("overlay").classList.remove("hidden");
     this._renderDialogInfo();
     this._renderDialogForms();
@@ -503,15 +509,15 @@ class GrowTrackerPanel extends HTMLElement {
 
   _closeDialog() {
     this._selectedId = null;
-    this._logDraft = null;
+    this._edit = null;
     this.shadowRoot.getElementById("overlay").classList.add("hidden");
   }
 
   _renderDialogInfo() {
     const p = this._plant(this._selectedId);
     if (!p) return;
-    // Während das Schnitt-Protokoll bearbeitet wird, keine Live-Updates (Eingaben bleiben erhalten)
-    if (this._logDraft) return;
+    // Während eine Liste bearbeitet wird, keine Live-Updates (Eingaben bleiben erhalten)
+    if (this._edit) return;
     this.shadowRoot.getElementById("dlg-title").innerHTML = `
       <div class="dlg-name">${esc(p.name)}</div>
       <div class="secondary">${[p.strain, p.location_name].filter(Boolean).map(esc).join(" · ")}</div>`;
@@ -534,18 +540,6 @@ class GrowTrackerPanel extends HTMLElement {
       stats.push([this._t("expected_harvest"), `${this._date(p.expected_harvest)} – ${this._harvestText(p)}`]);
     }
 
-    const phaseHistory = p.history
-      .slice()
-      .reverse()
-      .map(
-        (h) => `<li>${this._phaseChip(h.phase)}<span>${esc(this._t("since"))} ${this._date(h.start)}</span></li>`
-      )
-      .join("");
-    const locationHistory = p.location_history
-      .slice()
-      .reverse()
-      .map((h) => `<li><b>${esc(h.location)}</b><span>${esc(this._t("since"))} ${this._date(h.start)}</span></li>`)
-      .join("");
     const notes = p.notes.length
       ? p.notes
           .slice()
@@ -576,44 +570,104 @@ class GrowTrackerPanel extends HTMLElement {
       cuttings = `
         <h3>${esc(this._t("tracked_cuttings"))} (${p.cuttings_count})</h3>
         <ul class="list">${children || `<li class="secondary">${esc(this._t("no_cuttings"))}</li>`}</ul>
-        <div class="section-head">
-          <h3>${esc(this._t("cuttings_log"))}</h3>
-          <button class="text-button small-button" id="log-edit">${esc(this._t("edit_log"))}</button>
-        </div>
-        <div id="log-area"></div>`;
+        ${this._editableSection("log", this._t("cuttings_log"))}`;
     }
 
     this.shadowRoot.getElementById("dlg-info").innerHTML = `
       <div class="badges">${this._phaseChip(p.phase)}<span class="secondary">${origin}</span></div>
       <dl class="stats">${stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
       <div class="columns">
-        <div><h3>${esc(this._t("phase_history"))}</h3><ul class="list">${phaseHistory}</ul></div>
-        <div><h3>${esc(this._t("location_history"))}</h3><ul class="list">${locationHistory}</ul></div>
+        <div>${this._editableSection("phase", this._t("phase_history"))}</div>
+        <div>${this._editableSection("location", this._t("location_history"))}</div>
       </div>
       ${cuttings}
       <h3>${esc(this._t("notes"))}</h3>
       <ul class="list notes">${notes}</ul>
     `;
-    this._renderLogArea();
+    this._renderEditAreas();
   }
 
-  // --- Schnitt-Protokoll (Anzeige / Bearbeiten) --------------------------------
+  // --- Bearbeitbare Listen (Phasen, Standorte, Schnitt-Protokoll) -----------------
 
-  _renderLogArea() {
-    const area = this.shadowRoot.getElementById("log-area");
-    const p = this._plant(this._selectedId);
-    if (!area || !p) return;
-    const editButton = this.shadowRoot.getElementById("log-edit");
+  _editableSection(kind, title) {
+    return `
+      <div class="section-head">
+        <h3>${esc(title)}</h3>
+        <button class="text-button small-button" id="edit-btn-${kind}">${esc(this._t("edit_log"))}</button>
+      </div>
+      <div id="edit-area-${kind}"></div>`;
+  }
 
-    if (!this._logDraft) {
-      editButton.hidden = false;
-      editButton.onclick = () => {
-        this._logDraft = p.cuttings_log.map((c) => ({ date: c.date, count: c.count }));
-        if (!this._logDraft.length) this._logDraft.push({ date: this._data.today, count: 1 });
-        this._renderLogArea();
-      };
-      area.innerHTML = p.cuttings_log.length
-        ? `<ul class="list">${p.cuttings_log
+  _editors() {
+    const today = this._data.today;
+    const since = esc(this._t("since"));
+    const last = (rows, fallback) => (rows.length ? rows[rows.length - 1].value : fallback);
+    const dateColumn = { name: "date", type: "date", label: this._t("start") };
+    const locationOptions = this._data.locations.map((l) => ({ value: l.id, label: l.name }));
+    return {
+      phase: {
+        grid: "minmax(0, 1fr) minmax(0, 1fr) 40px",
+        minRows: 1,
+        invalid: "history_invalid",
+        columns: [
+          {
+            name: "value",
+            type: "select",
+            label: this._t("phase"),
+            options: PHASES.map((ph) => ({ value: ph, label: this._t(`phases.${ph}`) })),
+          },
+          dateColumn,
+        ],
+        load: (p) => p.history.map((h) => ({ value: h.phase, date: h.start })),
+        newRow: (rows) => ({ value: last(rows, PHASES[0]), date: today }),
+        view: (p) =>
+          p.history
+            .slice()
+            .reverse()
+            .map((h) => `<li>${this._phaseChip(h.phase)}<span>${since} ${this._date(h.start)}</span></li>`)
+            .join(""),
+        message: (p, rows) => ({
+          type: "grow_tracker/set_history",
+          plant_id: p.id,
+          kind: "phase",
+          history: rows.map((r) => ({ value: r.value, start: r.date })),
+        }),
+      },
+      location: {
+        grid: "minmax(0, 1fr) minmax(0, 1fr) 40px",
+        minRows: 1,
+        invalid: "history_invalid",
+        columns: [
+          { name: "value", type: "select", label: this._t("target_location"), options: locationOptions },
+          dateColumn,
+        ],
+        load: (p) => p.location_history.map((h) => ({ value: h.location_id, date: h.start })),
+        newRow: (rows) => ({ value: last(rows, locationOptions[0]?.value ?? ""), date: today }),
+        view: (p) =>
+          p.location_history
+            .slice()
+            .reverse()
+            .map((h) => `<li><b>${esc(h.location)}</b><span>${since} ${this._date(h.start)}</span></li>`)
+            .join(""),
+        message: (p, rows) => ({
+          type: "grow_tracker/set_history",
+          plant_id: p.id,
+          kind: "location",
+          history: rows.map((r) => ({ value: r.value, start: r.date })),
+        }),
+      },
+      log: {
+        grid: "minmax(0, 1fr) 96px 40px",
+        minRows: 0,
+        invalid: "log_invalid",
+        columns: [
+          { name: "date", type: "date", label: this._t("date") },
+          { name: "count", type: "number", label: this._t("count") },
+        ],
+        load: (p) => p.cuttings_log.map((c) => ({ date: c.date, count: c.count })),
+        newRow: () => ({ date: today, count: 1 }),
+        view: (p) =>
+          p.cuttings_log
             .slice()
             .reverse()
             .map(
@@ -622,93 +676,145 @@ class GrowTrackerPanel extends HTMLElement {
                   c.date
                 )}</span></li>`
             )
-            .join("")}</ul>`
-        : `<ul class="list"><li class="secondary">${esc(this._t("log_empty"))}</li></ul>`;
+            .join(""),
+        message: (p, rows) => ({
+          type: "grow_tracker/set_cuttings_log",
+          plant_id: p.id,
+          log: rows.map((r) => ({ date: r.date, count: r.count })),
+        }),
+      },
+    };
+  }
+
+  _renderEditAreas() {
+    for (const kind of ["phase", "location", "log"]) this._renderEditArea(kind);
+  }
+
+  _renderEditArea(kind) {
+    const area = this.shadowRoot.getElementById(`edit-area-${kind}`);
+    const button = this.shadowRoot.getElementById(`edit-btn-${kind}`);
+    const p = this._plant(this._selectedId);
+    if (!area || !button || !p) return;
+    const cfg = this._editors()[kind];
+
+    if (this._edit?.kind !== kind) {
+      // Immer nur eine Liste gleichzeitig bearbeiten
+      button.hidden = Boolean(this._edit);
+      button.onclick = () => {
+        const rows = cfg.load(p);
+        if (!rows.length) rows.push(cfg.newRow(rows));
+        this._edit = { kind, rows };
+        this._renderEditAreas();
+      };
+      const items = cfg.view(p);
+      area.innerHTML = `<ul class="list">${items || `<li class="secondary">${esc(this._t("log_empty"))}</li>`}</ul>`;
       return;
     }
 
-    editButton.hidden = true;
+    button.hidden = true;
     const today = this._data.today;
-    const rows = this._logDraft
-      .map(
-        (row, i) => `
-        <div class="log-row" data-index="${i}">
-          <input type="date" name="date" value="${esc(row.date)}" max="${today}" required
-            aria-label="${esc(this._t("date"))}">
-          <input type="number" name="count" value="${esc(row.count)}" min="1" max="1000" required
-            aria-label="${esc(this._t("count"))}">
-          <button type="button" class="icon-button" data-remove="${i}"
-            aria-label="${esc(this._t("remove_entry"))}" title="${esc(this._t("remove_entry"))}">✕</button>
-        </div>`
-      )
-      .join("");
+    const rows = this._edit.rows;
+    const canRemove = rows.length > cfg.minRows;
+    const field = (col, row) => {
+      const label = `aria-label="${esc(col.label)}"`;
+      if (col.type === "select") {
+        const options = col.options
+          .map(
+            (o) =>
+              `<option value="${esc(o.value)}" ${o.value === row[col.name] ? "selected" : ""}>${esc(o.label)}</option>`
+          )
+          .join("");
+        return `<select name="${col.name}" ${label}>${options}</select>`;
+      }
+      if (col.type === "date") {
+        return `<input type="date" name="${col.name}" value="${esc(row[col.name])}" max="${today}" ${label}>`;
+      }
+      return `<input type="number" name="${col.name}" value="${esc(row[col.name])}" min="1" max="1000" ${label}>`;
+    };
+
     area.innerHTML = `
-      <form class="log-editor" id="log-form" novalidate>
-        <div class="log-row log-labels secondary small" aria-hidden="true">
-          <span>${esc(this._t("date"))}</span><span>${esc(this._t("count"))}</span><span></span>
+      <form class="edit-form" novalidate>
+        <div class="edit-row edit-labels secondary small" style="grid-template-columns:${cfg.grid}" aria-hidden="true">
+          ${cfg.columns.map((c) => `<span>${esc(c.label)}</span>`).join("")}<span></span>
         </div>
-        ${rows || `<div class="secondary small">${esc(this._t("log_empty"))}</div>`}
-        <button type="button" class="text-button small-button" id="log-add">+ ${esc(this._t("add_entry"))}</button>
-        <div class="status" id="log-status" role="status"></div>
+        ${rows
+          .map(
+            (row, i) => `
+          <div class="edit-row" data-index="${i}" style="grid-template-columns:${cfg.grid}">
+            ${cfg.columns.map((c) => field(c, row)).join("")}
+            <button type="button" class="icon-button" data-remove="${i}" ${canRemove ? "" : "disabled"}
+              aria-label="${esc(this._t("remove_entry"))}" title="${esc(this._t("remove_entry"))}">✕</button>
+          </div>`
+          )
+          .join("")}
+        <button type="button" class="text-button small-button" data-add>+ ${esc(this._t("add_entry"))}</button>
+        <div class="status" data-status role="status"></div>
         <div class="confirm-buttons">
-          <button type="button" class="text-button" id="log-cancel">${esc(this._t("cancel"))}</button>
+          <button type="button" class="text-button" data-cancel>${esc(this._t("cancel"))}</button>
           <button type="submit" class="primary">${esc(this._t("save"))}</button>
         </div>
       </form>`;
 
-    const form = area.querySelector("#log-form");
+    const form = area.querySelector("form");
     form.querySelectorAll("[data-remove]").forEach((btn) =>
       btn.addEventListener("click", () => {
-        this._syncLogDraft();
-        this._logDraft.splice(Number(btn.dataset.remove), 1);
-        this._renderLogArea();
+        this._syncEdit(area, cfg);
+        this._edit.rows.splice(Number(btn.dataset.remove), 1);
+        this._renderEditArea(kind);
       })
     );
-    form.querySelector("#log-add").addEventListener("click", () => {
-      this._syncLogDraft();
-      this._logDraft.push({ date: today, count: 1 });
-      this._renderLogArea();
-      const inputs = area.querySelectorAll('input[name="count"]');
-      inputs[inputs.length - 1]?.focus();
+    form.querySelector("[data-add]").addEventListener("click", () => {
+      this._syncEdit(area, cfg);
+      this._edit.rows.push(cfg.newRow(this._edit.rows));
+      this._renderEditArea(kind);
+      const fields = area.querySelectorAll(".edit-row[data-index] select, .edit-row[data-index] input");
+      fields[fields.length - cfg.columns.length]?.focus();
     });
-    form.querySelector("#log-cancel").addEventListener("click", () => {
-      this._logDraft = null;
+    form.querySelector("[data-cancel]").addEventListener("click", () => {
+      this._edit = null;
       this._renderDialogInfo();
     });
     form.addEventListener("submit", (ev) => {
       ev.preventDefault();
-      this._saveLog(p);
+      this._saveEdit(area, cfg, p);
     });
   }
 
-  _syncLogDraft() {
-    const area = this.shadowRoot.getElementById("log-area");
-    this._logDraft = [...area.querySelectorAll(".log-row[data-index]")].map((row) => ({
-      date: row.querySelector('input[name="date"]').value,
-      count: Number(row.querySelector('input[name="count"]').value),
-    }));
+  _syncEdit(area, cfg) {
+    this._edit.rows = [...area.querySelectorAll(".edit-row[data-index]")].map((rowEl) => {
+      const row = {};
+      for (const col of cfg.columns) {
+        const value = rowEl.querySelector(`[name="${col.name}"]`).value;
+        row[col.name] = col.type === "number" ? Number(value) : value;
+      }
+      return row;
+    });
   }
 
-  async _saveLog(plant) {
-    this._syncLogDraft();
-    const status = this.shadowRoot.getElementById("log-status");
-    const invalid = this._logDraft.some(
-      (row) => !row.date || row.date > this._data.today || !Number.isInteger(row.count) || row.count < 1
-    );
+  async _saveEdit(area, cfg, plant) {
+    this._syncEdit(area, cfg);
+    const rows = this._edit.rows;
+    const status = area.querySelector("[data-status]");
+    const invalid =
+      rows.length < cfg.minRows ||
+      rows.some((row) =>
+        cfg.columns.some((col) => {
+          const value = row[col.name];
+          if (col.type === "date") return !value || value > this._data.today;
+          if (col.type === "number") return !Number.isInteger(value) || value < 1;
+          return !value;
+        })
+      );
     if (invalid) {
       status.className = "status error";
-      status.textContent = this._t("log_invalid");
+      status.textContent = this._t(cfg.invalid);
       return;
     }
-    const buttons = this.shadowRoot.querySelectorAll("#log-form button");
+    const buttons = area.querySelectorAll("button");
     buttons.forEach((b) => (b.disabled = true));
     try {
-      await this._hass.callWS({
-        type: "grow_tracker/set_cuttings_log",
-        plant_id: plant.id,
-        log: this._logDraft,
-      });
-      this._logDraft = null;
+      await this._hass.callWS(cfg.message(plant, rows));
+      this._edit = null;
       this._renderDialogInfo();
     } catch (err) {
       status.className = "status error";
@@ -1057,15 +1163,14 @@ const STYLES = `
   .section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .section-head h3 { margin-bottom: 8px; }
   .dialog .small-button { padding: 4px 8px; font-size: 12px; margin-top: 12px; }
-  .log-editor { display: flex; flex-direction: column; gap: 8px; }
-  .log-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 96px 40px;
-    gap: 8px;
-    align-items: center;
-  }
-  .log-labels { margin-bottom: -4px; }
-  .log-editor .small-button { align-self: flex-start; margin-top: 0; }
+  .edit-form { display: flex; flex-direction: column; gap: 8px; }
+  /* Die bearbeitete Historie nutzt die volle Breite, damit Auswahl und Datum lesbar bleiben */
+  .columns > div:has(.edit-form) { grid-column: 1 / -1; }
+  .edit-row { display: grid; gap: 8px; align-items: center; }
+  .edit-row select, .edit-row input { min-width: 0; width: 100%; }
+  .edit-labels { margin-bottom: -4px; }
+  .edit-form .small-button { align-self: flex-start; margin-top: 0; }
+  .icon-button:disabled { opacity: 0.3; cursor: default; }
   .notes { max-height: 280px; overflow-y: auto; }
   .link { color: var(--primary-color); cursor: pointer; text-decoration: underline; }
   .forms {

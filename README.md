@@ -48,7 +48,7 @@ After setup, **Grow Tracker** appears in the Home Assistant sidebar:
 - One card per occupied location with its plants, phase, week, day and – while flowering – a progress bar and harvest countdown (empty locations are hidden)
 - Click a plant to see its phase and location history, cuttings and notes
 - Change phase or location (with date), add notes and take cuttings directly in the panel
-- Edit a mother plant's cuttings log: change date and count, remove or add entries
+- Edit the phase history, location history and a mother plant's cuttings log: change entries, remove or add them (corrections do not fire change events)
 - Delete plants (administrators only, with confirmation) – cuttings of a deleted mother plant are kept; deleting a cutting created via *take cuttings* also removes it from its mother's cuttings log
 - Updates live, also when changes come from automations
 

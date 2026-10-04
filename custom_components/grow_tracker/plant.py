@@ -128,6 +128,44 @@ class GrowPlant:
     def children(self) -> list[GrowPlant]:
         return [p for p in self.hub.plants.values() if p.mother_id == self.subentry_id]
 
+    async def async_set_history(self, kind: str, entries: list[dict[str, Any]]) -> None:
+        """Phasen- oder Standort-Historie komplett ersetzen (Bearbeiten im Panel).
+
+        Es werden bewusst keine Events ausgelöst – das ist eine Korrektur, kein Wechsel.
+        """
+        if kind == "phase":
+            key, valid, target = "phase", set(PHASES), "history"
+        elif kind == "location":
+            key, valid, target = "location", set(self.hub.locations), "locations"
+        else:
+            raise ServiceValidationError(f"Unbekannte Historie: {kind}")
+        if not entries:
+            raise ServiceValidationError("Mindestens ein Eintrag ist nötig")
+
+        today = _today()
+        rows: list[tuple[date, str]] = []
+        for entry in entries:
+            start: date = entry["start"]
+            value = entry["value"]
+            if value not in valid:
+                raise ServiceValidationError(f"Unbekannter Wert: {value}")
+            if start > today:
+                raise ServiceValidationError("Datum liegt in der Zukunft")
+            rows.append((start, value))
+
+        history: list[dict[str, str]] = []
+        for start, value in sorted(rows, key=lambda row: row[0]):
+            # Direkt aufeinanderfolgende gleiche Einträge zusammenfassen
+            if history and history[-1][key] == value:
+                continue
+            history.append({key: value, "start": start.isoformat()})
+
+        old_location = self.location_id
+        self.data[target] = history
+        if kind == "location" and self.location_id != old_location:
+            self.async_sync_area()
+        await self.hub.async_save_and_notify()
+
     async def async_set_cuttings_log(self, entries: list[dict[str, Any]]) -> None:
         """Schnitt-Protokoll komplett ersetzen (Bearbeiten im Panel)."""
         today = _today()
