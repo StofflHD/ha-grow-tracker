@@ -11,7 +11,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN, SIGNAL_PANEL_UPDATE
+from .const import DATA_HUB, DOMAIN, SIGNAL_PANEL_UPDATE
 from .hub import GrowHub
 from .panel import async_register_panel, async_register_static_path, async_remove_panel
 from .websocket import async_setup_websocket
@@ -43,15 +43,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: GrowConfigEntry) -> bool
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     await async_register_panel(hass)
+    # Der Entry ist hier noch nicht LOADED – das Panel liest den Hub daher aus hass.data
+    hass.data[DATA_HUB] = hub
     async_dispatcher_send(hass, SIGNAL_PANEL_UPDATE)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: GrowConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    # Beim Reload bleibt das Panel bestehen, sonst landet man auf der Startseite
-    if unloaded and entry.disabled_by is not None:
-        async_remove_panel(hass)
+    if unloaded:
+        hass.data.pop(DATA_HUB, None)
+        # Beim Reload bleibt das Panel bestehen, sonst landet man auf der Startseite
+        if entry.disabled_by is not None:
+            async_remove_panel(hass)
+            async_dispatcher_send(hass, SIGNAL_PANEL_UPDATE)
     return unloaded
 
 

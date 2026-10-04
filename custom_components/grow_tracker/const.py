@@ -66,6 +66,8 @@ MAX_NOTES = 200
 SIGNAL_UPDATE = f"{DOMAIN}_update_{{}}"
 # Signal für das Seitenleisten-Panel (auch bei Setup/Unload)
 SIGNAL_PANEL_UPDATE = f"{DOMAIN}_panel_update"
+# Aktiver Hub für das Panel (gesetzt, sobald die Daten bereitstehen)
+DATA_HUB = f"{DOMAIN}_hub"
 
 # Seitenleisten-Panel
 PANEL_URL_PATH = "grow-tracker"

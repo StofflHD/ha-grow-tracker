@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, SIGNAL_PANEL_UPDATE, WS_SUBSCRIBE
+from .const import DATA_HUB, SIGNAL_PANEL_UPDATE, WS_SUBSCRIBE
 from .hub import GrowHub
 from .plant import GrowPlant
 
@@ -41,11 +41,10 @@ def ws_subscribe(
 
 @callback
 def async_overview(hass: HomeAssistant) -> dict[str, Any]:
-    entries = hass.config_entries.async_loaded_entries(DOMAIN)
-    if not entries:
+    hub: GrowHub | None = hass.data.get(DATA_HUB)
+    if hub is None:
         return {"loaded": False, "locations": [], "plants": []}
 
-    hub: GrowHub = entries[0].runtime_data
     return {
         "loaded": True,
         "entry_id": hub.entry.entry_id,

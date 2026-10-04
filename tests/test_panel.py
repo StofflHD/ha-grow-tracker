@@ -57,6 +57,36 @@ async def test_ws_subscribe(
     assert mother["phase"] == "mother"
 
 
+async def test_ws_after_creating_cuttings(
+    hass: HomeAssistant, setup_entry: MockConfigEntry, hass_ws_client: WebSocketGenerator
+) -> None:
+    """Nach dem Reload durch neue Stecklinge muss das Panel geladene Daten bekommen."""
+    assert await async_setup_component(hass, "websocket_api", {})
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "grow_tracker/subscribe"})
+    assert (await client.receive_json())["success"]
+    event = (await client.receive_json())["event"]
+    mother = next(p for p in event["plants"] if p["id"] == PLANT_MOTHER)
+
+    await hass.services.async_call(
+        "grow_tracker",
+        "take_cuttings",
+        {"entity_id": mother["phase_entity_id"], "count": 2, "create_plants": True},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    # 1. Meldung: Schnitt protokolliert, 2. Meldung: nach dem Reload
+    first = (await client.receive_json())["event"]
+    assert first["loaded"] is True
+    after_reload = (await client.receive_json())["event"]
+    assert after_reload["loaded"] is True
+    assert len(after_reload["plants"]) == 4
+    mother = next(p for p in after_reload["plants"] if p["id"] == PLANT_MOTHER)
+    assert len(mother["children"]) == 2
+    assert mother["phase_entity_id"] is not None
+
+
 async def test_ws_not_loaded(hass: HomeAssistant, hass_ws_client: WebSocketGenerator) -> None:
     assert await async_setup_component(hass, "grow_tracker", {})
     assert await async_setup_component(hass, "websocket_api", {})
