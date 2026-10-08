@@ -12,6 +12,7 @@ import pytest_socket
 
 from custom_components.grow_tracker.const import DOMAIN
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
 START = "2026-09-01"
 
@@ -61,6 +62,14 @@ def _plant(subentry_id: str, title: str, **data) -> dict:
         "title": title,
         "unique_id": None,
     }
+
+
+def get_device(hass: HomeAssistant, entry: MockConfigEntry, subentry_id: str):
+    """Gerät eines Standorts/einer Pflanze (ohne das veraltete async_get_device)."""
+    for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id):
+        if (DOMAIN, subentry_id) in device.identifiers:
+            return device
+    return None
 
 
 @pytest.fixture

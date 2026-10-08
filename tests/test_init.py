@@ -23,7 +23,7 @@ from homeassistant.helpers import (
     entity_registry as er,
 )
 
-from .conftest import LOC_FLOWER, LOC_MOTHER, LOC_PROP, PLANT_MOTHER, PLANT_SEED
+from .conftest import LOC_FLOWER, LOC_MOTHER, LOC_PROP, PLANT_MOTHER, PLANT_SEED, get_device
 
 
 def _eid(hass: HomeAssistant, platform: str, subentry_id: str, key: str) -> str:
@@ -149,15 +149,15 @@ async def test_area_sync(hass: HomeAssistant, mock_entry: MockConfigEntry) -> No
     assert await hass.config_entries.async_setup(mock_entry.entry_id)
     await hass.async_block_till_done()
 
-    dev_reg = dr.async_get(hass)
-    loc_device = dev_reg.async_get_device(identifiers={(DOMAIN, LOC_PROP)})
+    # Geräte über den Config Entry suchen (async_get_device ist veraltet)
+    loc_device = get_device(hass, mock_entry, LOC_PROP)
     assert loc_device.area_id == area.id
 
-    plant_device = dev_reg.async_get_device(identifiers={(DOMAIN, PLANT_SEED)})
+    plant_device = get_device(hass, mock_entry, PLANT_SEED)
     assert plant_device.area_id != area.id
 
     await _call(hass, "set_location", PLANT_SEED, location="Anzucht")
-    plant_device = dev_reg.async_get_device(identifiers={(DOMAIN, PLANT_SEED)})
+    plant_device = get_device(hass, mock_entry, PLANT_SEED)
     assert plant_device.area_id == area.id
 
 
@@ -238,7 +238,7 @@ async def test_remove_plant(hass: HomeAssistant, setup_entry: MockConfigEntry) -
 
     assert PLANT_SEED not in setup_entry.runtime_data.plants
     assert er.async_get(hass).async_get(entity_id) is None
-    assert dr.async_get(hass).async_get_device(identifiers={(DOMAIN, PLANT_SEED)}) is None
+    assert get_device(hass, setup_entry, PLANT_SEED) is None
     assert _state(hass, "sensor", LOC_FLOWER, "plant_count").state == "0"
 
 

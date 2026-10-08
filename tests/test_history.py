@@ -12,12 +12,11 @@ from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
     area_registry as ar,
-    device_registry as dr,
     entity_registry as er,
 )
 from homeassistant.setup import async_setup_component
 
-from .conftest import LOC_FLOWER, LOC_MOTHER, LOC_PROP, PLANT_SEED
+from .conftest import LOC_FLOWER, LOC_MOTHER, LOC_PROP, PLANT_SEED, get_device
 
 
 async def _client(hass: HomeAssistant, hass_ws_client: WebSocketGenerator):
@@ -99,7 +98,7 @@ async def test_edit_location_history_moves_area(
     assert plant.location_id == LOC_PROP
     assert _state(hass, "select", "location").state == "Anzucht"
     assert _state(hass, "sensor", "days_at_location").state == "5"
-    device = dr.async_get(hass).async_get_device(identifiers={("grow_tracker", PLANT_SEED)})
+    device = get_device(hass, mock_entry, PLANT_SEED)
     assert device.area_id == area.id
     counts = mock_entry.runtime_data.locations
     assert len(counts[LOC_FLOWER].plants()) == 0

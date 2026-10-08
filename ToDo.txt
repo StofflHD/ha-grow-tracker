@@ -1,1 +1,7 @@
-dc
+- Development und Releasing aus readme entfernen
+- readme verschlanken und ein wiki mit den funktionen erstellen inkl. beispielen und installationsanleitung
+- wenn bei einer mutterpfalnze bspw. der Breeder/Cutter geändert wird, oder ein anderes feld der mutterpflanze, soll es auch bei den stecklingen der pflanze geändert werden
+- Phänotyp bei der Pflanze hinzufügen
+- Name in Sorte umbennen und Sorte in Breeder/Cutter umbennen
+- Notizen bearbeitbar machen und Datumsfeld hinzufügen, um Noitzen aus der Vergangenheit hinzufügen zu können
+- im sidepanel die Pflanzen im gleichen Standort zusammenfassen, wenn es der gleiche Typ ist wegen der übersichtlichkeit, aber nur wenn es stecklinge sind

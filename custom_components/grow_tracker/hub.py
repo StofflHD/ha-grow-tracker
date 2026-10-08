@@ -209,7 +209,20 @@ class GrowHub:
     def async_set_device_area(self, subentry_id: str, area_id: str | None) -> None:
         if area_id is None:
             return
-        dev_reg = dr.async_get(self.hass)
-        device = dev_reg.async_get_device(identifiers={(DOMAIN, subentry_id)})
+        device = self.async_get_device(subentry_id)
         if device is not None and device.area_id != area_id:
-            dev_reg.async_update_device(device.id, area_id=area_id)
+            dr.async_get(self.hass).async_update_device(device.id, area_id=area_id)
+
+    @callback
+    def async_get_device(self, subentry_id: str) -> dr.DeviceEntry | None:
+        """Gerät eines Standorts/einer Pflanze innerhalb dieses Config Entries finden.
+
+        Ersetzt DeviceRegistry.async_get_device (veraltet ab HA 2027.8): Kennungen sind
+        nur noch pro Config Entry eindeutig. async_entries_for_config_entry gibt es in
+        allen unterstützten HA-Versionen.
+        """
+        identifier = (DOMAIN, subentry_id)
+        for device in dr.async_entries_for_config_entry(dr.async_get(self.hass), self.entry.entry_id):
+            if identifier in device.identifiers:
+                return device
+        return None
