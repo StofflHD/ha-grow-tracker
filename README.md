@@ -22,12 +22,12 @@ Requires Home Assistant **2025.6** or newer.
 3. Download **Grow Tracker** and restart Home Assistant
 4. *Settings → Devices & services → Add integration → Grow Tracker*
 
-Manual installation and details: [Installation](https://github.com/StofflHD/ha-grow-tracker/wiki/Installation)
+Manual installation and details: [Installation](https://github.com/StofflHD/ha-grow-tracker/blob/main/docs/Installation.md)
 
 ## Documentation
 
-Everything else – setup, sidebar panel, cuttings, notes, entities, actions and automation examples – is in the
-**[Wiki](https://github.com/StofflHD/ha-grow-tracker/wiki)**.
+Everything else – setup, sidebar panel, cuttings, notes, entities, actions and automation examples – can be found in the
+**[documentation](https://github.com/StofflHD/ha-grow-tracker/blob/main/docs/README.md)**.
 
 ## License
 

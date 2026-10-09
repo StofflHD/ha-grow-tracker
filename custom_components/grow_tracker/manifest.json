@@ -4,7 +4,7 @@
   "after_dependencies": ["frontend", "http", "logbook", "panel_custom", "websocket_api"],
   "codeowners": ["@StofflHD"],
   "config_flow": true,
-  "documentation": "https://github.com/StofflHD/ha-grow-tracker",
+  "documentation": "https://github.com/StofflHD/ha-grow-tracker/blob/main/docs/README.md",
   "integration_type": "hub",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/StofflHD/ha-grow-tracker/issues",
