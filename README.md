@@ -31,4 +31,4 @@ Everything else – setup, sidebar panel, cuttings, notes, entities, actions and
 
 ## License
 
-[MIT](LICENSE)
+[GNU General Public License v3.0](LICENSE)
