@@ -8,6 +8,7 @@ changes come from automations or actions – and follows your Home Assistant the
 - At the top: how many plants are in which phase.
 - One **card per location** that currently has plants. Empty locations are hidden (a note below the cards says how many).
 - Per plant: strain, phenotype · breeder/cutter, phase, week in phase and day since start.
+  - **Drying and curing:** instead of week and day, how long the plant has been in that phase (e.g. *for 5 days*).
   - **Flowering:** progress bar and *Harvest in X days*.
   - **Mother plants:** number of existing cuttings (✂).
 - **Grouped cuttings:** cuttings at the same location, from the same mother and in the same phase are shown as one row,

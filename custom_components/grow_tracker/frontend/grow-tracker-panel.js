@@ -14,6 +14,9 @@ const PHASES = [
   "finished",
 ];
 
+// Phasen, in denen statt Woche/Tag die Dauer seit dem Wechsel angezeigt wird
+const SINCE_PHASES = new Set(["drying", "curing"]);
+
 const PHASE_COLORS = {
   germination: "#9ccc65",
   rooting: "#a1887f",
@@ -42,6 +45,9 @@ const I18N = {
     week: "Week",
     days: "days",
     harvest_in: "Harvest in {n} days",
+    since_today: "since today",
+    since_day_one: "for 1 day",
+    since_days: "for {n} days",
     harvest_today: "Harvest due",
     harvest_over: "Harvest {n} days overdue",
     cuttings: "{n} cuttings",
@@ -134,6 +140,9 @@ const I18N = {
     week: "Woche",
     days: "Tage",
     harvest_in: "Ernte in {n} Tagen",
+    since_today: "seit heute",
+    since_day_one: "seit 1 Tag",
+    since_days: "seit {n} Tagen",
     harvest_today: "Ernte fällig",
     harvest_over: "Ernte seit {n} Tagen fällig",
     cuttings: "{n} Stecklinge",
@@ -329,6 +338,15 @@ class GrowTrackerPanel extends HTMLElement {
     return `<span class="chip" style="--chip:${PHASE_COLORS[phase] || "#888"}">${esc(
       this._t(`phases.${phase}`)
     )}</span>`;
+  }
+
+  _sinceText(days) {
+    // "seit heute" / "seit 1 Tag" / "seit 5 Tagen" / "seit 3–5 Tagen"
+    const min = Math.min(...days);
+    const max = Math.max(...days);
+    if (max === 0) return this._t("since_today");
+    if (min === max) return this._t(min === 1 ? "since_day_one" : "since_days", { n: min });
+    return this._t("since_days", { n: `${min}–${max}` });
   }
 
   _harvestText(plant) {
@@ -570,9 +588,13 @@ class GrowTrackerPanel extends HTMLElement {
           </span>
           <span class="plant-side">
             ${this._phaseChip(first.phase)}
-            <span class="secondary small">${esc(this._t("week"))} ${range(members.map((m) => m.week_in_phase))} · ${esc(
-      this._t("day")
-    )} ${range(members.map((m) => m.days_total))}</span>
+            <span class="secondary small">${
+              SINCE_PHASES.has(first.phase)
+                ? esc(this._sinceText(members.map((m) => m.days_in_phase)))
+                : `${esc(this._t("week"))} ${range(members.map((m) => m.week_in_phase))} · ${esc(
+                    this._t("day")
+                  )} ${range(members.map((m) => m.days_total))}`
+            }</span>
           </span>
           <span class="chevron" aria-hidden="true">${expanded ? "▾" : "▸"}</span>
         </button>
@@ -602,9 +624,11 @@ class GrowTrackerPanel extends HTMLElement {
         </span>
         <span class="plant-side">
           ${this._phaseChip(p.phase)}
-          <span class="secondary small">${esc(this._t("week"))} ${p.week_in_phase} · ${esc(
-      this._t("day")
-    )} ${p.days_total}</span>
+          <span class="secondary small">${
+            SINCE_PHASES.has(p.phase)
+              ? esc(this._sinceText([p.days_in_phase]))
+              : `${esc(this._t("week"))} ${p.week_in_phase} · ${esc(this._t("day"))} ${p.days_total}`
+          }</span>
         </span>
       </button>
     `;
