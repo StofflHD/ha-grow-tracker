@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.grow_tracker.config_flow import _guess_location_type
 from custom_components.grow_tracker.const import DOMAIN
 from homeassistant.config_entries import SOURCE_RECONFIGURE, SOURCE_USER
 from homeassistant.core import HomeAssistant
@@ -50,6 +52,20 @@ async def test_setup_wizard(hass: HomeAssistant) -> None:
         if sub.subentry_type == "location"
     )
     assert locations == [("Blüte groß", "flowering"), ("Mutterschrank", "mother")]
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("Trockenzelt", "drying"),
+        ("Curing Gläser", "curing"),
+        ("Fermentation", "curing"),
+        ("Blüte groß", "flowering"),
+        ("Keller", "other"),
+    ],
+)
+def test_guess_location_type(name: str, expected: str) -> None:
+    assert _guess_location_type(name) == expected
 
 
 async def test_setup_wizard_errors(hass: HomeAssistant) -> None:

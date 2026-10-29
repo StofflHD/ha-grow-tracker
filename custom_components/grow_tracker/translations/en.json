@@ -158,6 +158,7 @@
         "vegetative": "Vegetative",
         "flowering": "Flowering",
         "drying": "Drying",
+        "curing": "Curing",
         "other": "Other"
       }
     }

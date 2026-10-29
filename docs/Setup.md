@@ -24,6 +24,7 @@ Propagation box
   | Vegetative | |
   | Flowering | |
   | Drying | |
+  | Curing | |
   | Other | |
 
 - **Area** (optional) – a Home Assistant area. Plants at this location are automatically assigned to this area,

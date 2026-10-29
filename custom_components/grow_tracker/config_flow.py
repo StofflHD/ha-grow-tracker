@@ -45,6 +45,7 @@ from .const import (
     CONF_STRAIN,
     DEFAULT_FLOWER_WEEKS,
     DOMAIN,
+    LOCATION_TYPE_CURING,
     LOCATION_TYPE_DRYING,
     LOCATION_TYPE_FLOWERING,
     LOCATION_TYPE_MOTHER,
@@ -68,6 +69,7 @@ _TYPE_KEYWORDS = (
     (LOCATION_TYPE_MOTHER, ("mutter", "mother")),
     (LOCATION_TYPE_PROPAGATION, ("steckling", "anzucht", "propag", "clone", "klon")),
     (LOCATION_TYPE_FLOWERING, ("blüte", "bluete", "flower", "bloom")),
+    (LOCATION_TYPE_CURING, ("curing", "cure", "fermen", "reif")),
     (LOCATION_TYPE_DRYING, ("trock", "dry")),
     (LOCATION_TYPE_VEGETATIVE, ("wachs", "veg")),
 )

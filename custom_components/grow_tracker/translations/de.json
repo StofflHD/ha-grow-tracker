@@ -158,6 +158,7 @@
         "vegetative": "Wachstum",
         "flowering": "Blüte",
         "drying": "Trocknung",
+        "curing": "Curing",
         "other": "Sonstiges"
       }
     }
