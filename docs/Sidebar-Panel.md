@@ -13,7 +13,7 @@ changes come from automations or actions – and follows your Home Assistant the
   - **Mother plants:** number of existing cuttings (✂).
 - **Grouped cuttings:** cuttings at the same location, from the same mother and in the same phase are shown as one row,
   e.g. *Gelato #41 ✂ ×5*. Week and day are shown as a range if they differ. Click the row to expand it.
-- **Manage** (top right) opens the integration page to add locations and plants.
+- **Settings** (top right) opens the integration page to add locations and plants.
 
 You can hide or move the panel entry like any other sidebar item (long-press the *Home Assistant* title in the sidebar).
 

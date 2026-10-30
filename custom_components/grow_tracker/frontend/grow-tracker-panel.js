@@ -31,11 +31,11 @@ const PHASE_COLORS = {
 const I18N = {
   en: {
     title: "Grow Tracker",
-    manage: "Manage",
+    manage: "Settings",
     not_loaded: "Grow Tracker is not set up or not loaded.",
     no_locations: "No locations yet. Add locations and plants on the integration page.",
     no_plants: "No plants",
-    no_plants_yet: "No plants yet. Add plants on the integration page (Manage).",
+    no_plants_yet: "No plants yet. Add plants on the integration page (Settings).",
     hidden_location_one: "1 empty location hidden",
     hidden_locations: "{n} empty locations hidden",
     without_location: "Without location",
@@ -126,11 +126,11 @@ const I18N = {
   },
   de: {
     title: "Grow Tracker",
-    manage: "Verwalten",
+    manage: "Einstellungen",
     not_loaded: "Grow Tracker ist nicht eingerichtet oder nicht geladen.",
     no_locations: "Noch keine Standorte. Standorte und Pflanzen legst du auf der Integrationsseite an.",
     no_plants: "Keine Pflanzen",
-    no_plants_yet: "Noch keine Pflanzen. Pflanzen legst du auf der Integrationsseite an (Verwalten).",
+    no_plants_yet: "Noch keine Pflanzen. Pflanzen legst du auf der Integrationsseite an (Einstellungen).",
     hidden_location_one: "1 leerer Standort ausgeblendet",
     hidden_locations: "{n} leere Standorte ausgeblendet",
     without_location: "Ohne Standort",
