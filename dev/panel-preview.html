@@ -125,6 +125,23 @@
         setTimeout(window.__push, 10);
         return null;
       }
+      if (msg.type === "grow_tracker/duplicate_plant") {
+        const src = data.plants.find((x) => x.id === msg.plant_id);
+        const base = src.name.replace(/ #\d+$/, "");
+        const nums = data.plants.map((x) => x.name).filter((n) => n.startsWith(`${base} #`))
+          .map((n) => Number(n.slice(base.length + 2))).filter(Number.isInteger);
+        if (src.name === base) { src.name = `${base} #1`; nums.push(1); }
+        let next = Math.max(0, ...nums) + 1;
+        const created = [];
+        for (let i = 0; i < msg.count; i++) {
+          const copy = JSON.parse(JSON.stringify(src));
+          copy.id = `${src.id}_c${Date.now()}_${i}`; copy.name = `${base} #${next++}`; copy.notes = [];
+          copy.phase_entity_id = `select.${copy.id}_phase`;
+          data.plants.push(copy); created.push(copy.name);
+        }
+        setTimeout(window.__push, 10);
+        return { created };
+      }
       if (msg.type === "config_entries/subentries/delete") {
         data.plants = data.plants.filter((p) => p.id !== msg.subentry_id);
         data.plants.forEach((p) => { p.children = p.children.filter((c) => c !== msg.subentry_id); p.cuttings_count = p.children.length; });
@@ -175,6 +192,16 @@
       days_at_location: 6, history: [{ phase: "rooting", start: "2026-09-28" }],
       location_history: [{ location: "Mutterschrank", start: "2026-09-28" }] }),
   );
+  // Samen-Charge (für die Gruppierung von Samenpflanzen)
+  for (let n = 1; n <= 3; n++) {
+    data.plants.push(plant({
+      id: `z${n}`, name: `Zombie Kush #${n}`, strain: "Ripper Seeds", phenotype: "Indica Dominant",
+      phase: "germination", phase_start: "2026-10-04", grow_start: "2026-10-04", days_total: 0, days_in_phase: 0,
+      week_in_phase: 1, location_id: "l5", location_name: "Anzuchtbox", location_start: "2026-10-04", days_at_location: 0,
+      history: [{ phase: "germination", start: "2026-10-04" }],
+      location_history: [{ location: "Anzuchtbox", start: "2026-10-04" }],
+    }));
+  }
   const mother = data.plants.find((p) => p.id === "p1");
   mother.children = ["p3", "p4", "p6", "p7", "p8", "p9"]; mother.cuttings_count = 6;
   // Eindeutige entity_ids

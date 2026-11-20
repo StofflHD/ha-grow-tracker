@@ -18,6 +18,7 @@ from .const import (
     DATA_HUB,
     SIGNAL_PANEL_UPDATE,
     WS_DELETE_NOTE,
+    WS_DUPLICATE_PLANT,
     WS_SET_CUTTINGS_LOG,
     WS_SET_HISTORY,
     WS_SUBSCRIBE,
@@ -34,6 +35,7 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_set_history)
     websocket_api.async_register_command(hass, ws_update_note)
     websocket_api.async_register_command(hass, ws_delete_note)
+    websocket_api.async_register_command(hass, ws_duplicate_plant)
 
 
 async def _async_plant_action(
@@ -234,3 +236,24 @@ def _plant(plant: GrowPlant) -> dict[str, Any]:
         "phase_entity_id": plant.phase_entity_id,
         "location_entity_id": plant.location_entity_id,
     }
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_DUPLICATE_PLANT,
+        vol.Required("plant_id"): str,
+        vol.Required("count"): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
+    }
+)
+@websocket_api.async_response
+async def ws_duplicate_plant(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Pflanze samt Historie kopieren (legt neue Subentries an → nur Admins)."""
+    hub: GrowHub | None = hass.data.get(DATA_HUB)
+    if hub is None or msg["plant_id"] not in hub.plants:
+        connection.send_error(msg["id"], websocket_api.ERR_NOT_FOUND, "Unknown plant")
+        return
+    names = await hub.async_duplicate_plant(msg["plant_id"], msg["count"])
+    connection.send_result(msg["id"], {"created": names})

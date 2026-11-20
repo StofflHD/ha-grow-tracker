@@ -11,8 +11,11 @@ changes come from automations or actions – and follows your Home Assistant the
   - **Drying and curing:** instead of week and day, how long the plant has been in that phase (e.g. *for 5 days*).
   - **Flowering:** progress bar and *Harvest in X days*.
   - **Mother plants:** number of existing cuttings (✂).
-- **Grouped cuttings:** cuttings at the same location, from the same mother and in the same phase are shown as one row,
-  e.g. *Gelato #41 ✂ ×5*. Week and day are shown as a range if they differ. Click the row to expand it.
+- **Groups:** similar plants at the same location and in the same phase are shown as one row. Click the row to expand it;
+  week and day are shown as a range if they differ.
+  - **Cuttings** from the same mother, e.g. *Gelato #41 ✂ ×5*
+  - **Plants from seed** with the same strain (ignoring the `#n` number), breeder/cutter and phenotype, e.g. *Zombie Kush ×10*
+  - Mother plants are never grouped.
 - **Settings** (top right) opens the integration page to add locations and plants.
 
 You can hide or move the panel entry like any other sidebar item (long-press the *Home Assistant* title in the sidebar).
@@ -53,6 +56,15 @@ but no `phase_changed` / `location_changed` events are fired, so automations are
 ## Editing notes
 
 Click **✎** next to a note to change its text and time, or delete it – see [Notes](Notes.md).
+
+## Duplicating a plant
+
+At the bottom of the plant details: **Duplicate** (administrators only). Enter the number of copies.
+
+- The copies get the same settings and the same **phase and location history** – no notes and no cuttings log.
+- They are named `<strain> #2`, `<strain> #3` … If the plant has no number yet, it is renamed to `<strain> #1`;
+  if it already has one, numbering continues after the highest existing number.
+- Copies of a cutting stay linked to the same mother, but are not counted in her cuttings log.
 
 ## Deleting a plant
 

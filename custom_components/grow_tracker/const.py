@@ -88,6 +88,7 @@ WS_SET_CUTTINGS_LOG = f"{DOMAIN}/set_cuttings_log"
 WS_SET_HISTORY = f"{DOMAIN}/set_history"
 WS_UPDATE_NOTE = f"{DOMAIN}/update_note"
 WS_DELETE_NOTE = f"{DOMAIN}/delete_note"
+WS_DUPLICATE_PLANT = f"{DOMAIN}/duplicate_plant"
 
 EVENT_PHASE_CHANGED = f"{DOMAIN}_phase_changed"
 EVENT_LOCATION_CHANGED = f"{DOMAIN}_location_changed"

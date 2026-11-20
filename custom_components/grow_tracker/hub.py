@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime
+import re
+from types import MappingProxyType
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
@@ -17,6 +20,7 @@ from .const import (
     CONF_AREA,
     CONF_FLOWER_WEEKS,
     CONF_LOCATION_TYPE,
+    CONF_LOGGED_CUTTING,
     CONF_MOTHER,
     CONF_MOTHER_NAME,
     CONF_PHENOTYPE,
@@ -113,6 +117,7 @@ class GrowHub:
         self.plants: dict[str, GrowPlant] = {}
         # Unterdrückt Reloads, während mehrere Subentries angelegt werden
         self.reload_pending = False
+        self._pending_plant_data: dict[str, dict[str, Any]] = {}
 
     async def async_load(self) -> None:
         stored = await self._store.async_load() or {}
@@ -132,9 +137,72 @@ class GrowHub:
         await self.async_save()
 
     async def async_save(self) -> None:
-        await self._store.async_save(
-            {"plants": {pid: plant.data for pid, plant in self.plants.items()}}
-        )
+        plants = {pid: plant.data for pid, plant in self.plants.items()}
+        # Daten neuer Pflanzen, die erst nach dem nächsten Reload als Subentry geladen werden
+        plants.update(self._pending_plant_data)
+        await self._store.async_save({"plants": plants})
+
+    async def async_duplicate_plant(self, plant_id: str, count: int) -> list[str]:
+        """Pflanze mit Angaben sowie Phasen- und Standort-Historie kopieren.
+
+        Notizen und Schnitt-Protokoll werden nicht kopiert. Hat die Pflanze keine
+        Nummer, heißt sie danach "<Sorte> #1"; die Kopien werden fortlaufend nummeriert.
+        Gibt die Namen der Kopien zurück.
+        """
+        plant = self.plants.get(plant_id)
+        if plant is None:
+            raise ServiceValidationError(f"Unbekannte Pflanze: {plant_id}")
+
+        base = re.sub(r" #\d+$", "", plant.name)
+        prefix = f"{base} #"
+        rename_original = plant.name == base
+        taken = {
+            int(sub.title[len(prefix) :])
+            for sub in self.entry.subentries.values()
+            if sub.subentry_type == SUBENTRY_PLANT
+            and sub.title.startswith(prefix)
+            and sub.title[len(prefix) :].isdigit()
+        }
+        original_number = 0
+        if rename_original:
+            # "#1", falls frei – sonst die nächste freie Nummer
+            original_number = 1 if 1 not in taken else max(taken) + 1
+            taken.add(original_number)
+        start = max(taken, default=0) + 1
+
+        data = dict(plant.subentry.data)
+        if data.get(CONF_MOTHER):
+            # Kopien zählen nicht im Schnitt-Protokoll der Mutter (auch nicht per Namensmuster)
+            data[CONF_LOGGED_CUTTING] = False
+        copies = [
+            ConfigSubentry(
+                data=MappingProxyType(dict(data)),
+                subentry_type=SUBENTRY_PLANT,
+                title=f"{prefix}{number}",
+                unique_id=None,
+            )
+            for number in range(start, start + count)
+        ]
+
+        # Historie speichern, bevor die Subentries angelegt werden – der Reload liest sie
+        for copy in copies:
+            self._pending_plant_data[copy.subentry_id] = {
+                "history": deepcopy(plant.history),
+                "locations": deepcopy(plant.location_history),
+                "notes": [],
+                "cuttings": [],
+            }
+        await self.async_save()
+
+        self.reload_pending = True
+        if rename_original:
+            self.hass.config_entries.async_update_subentry(
+                self.entry, plant.subentry, title=f"{prefix}{original_number}"
+            )
+        for copy in copies:
+            self.hass.config_entries.async_add_subentry(self.entry, copy)
+        self.hass.config_entries.async_schedule_reload(self.entry.entry_id)
+        return [copy.title for copy in copies]
 
     async def async_save_and_notify(self) -> None:
         await self.async_save()

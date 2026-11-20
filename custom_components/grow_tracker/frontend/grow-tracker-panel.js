@@ -77,8 +77,9 @@ const I18N = {
     cutting_one: "1 cutting",
     no_cuttings: "No cuttings at the moment",
     edit_log: "Edit",
-    expand: "Show cuttings",
-    collapse: "Hide cuttings",
+    expand: "Show plants",
+    collapse: "Hide plants",
+    n_plants: "{n} plants",
     phenotype: "Phenotype",
     breeder: "Breeder/Cutter",
     note_time: "Time",
@@ -98,6 +99,12 @@ const I18N = {
     close: "Close",
     saved: "Saved",
     delete_plant: "Delete plant",
+    duplicate: "Duplicate",
+    duplicate_count: "Number of copies",
+    duplicate_hint: "The copies get the same settings and the same phase and location history, but no notes. They are named \"{name} #2\", \"{name} #3\" … – the plant itself becomes \"#1\" if it has no number yet.",
+    duplicate_done: "{n} copies created: {names}",
+    duplicate_done_one: "1 copy created: {names}",
+    duplicate_invalid: "Please enter a count between 1 and 100.",
     delete_confirm: "Really delete “{name}”?",
     delete_warning: "Phase and location history, notes and the cuttings log will be lost. This cannot be undone.",
     delete_children_note: "Its {n} tracked cuttings are kept.",
@@ -172,8 +179,9 @@ const I18N = {
     cutting_one: "1 Steckling",
     no_cuttings: "Aktuell keine Stecklinge",
     edit_log: "Bearbeiten",
-    expand: "Stecklinge anzeigen",
-    collapse: "Stecklinge ausblenden",
+    expand: "Pflanzen anzeigen",
+    collapse: "Pflanzen ausblenden",
+    n_plants: "{n} Pflanzen",
     phenotype: "Phänotyp",
     breeder: "Breeder/Cutter",
     note_time: "Zeitpunkt",
@@ -193,6 +201,12 @@ const I18N = {
     close: "Schließen",
     saved: "Gespeichert",
     delete_plant: "Pflanze löschen",
+    duplicate: "Duplizieren",
+    duplicate_count: "Anzahl der Kopien",
+    duplicate_hint: "Die Kopien bekommen dieselben Angaben und dieselbe Phasen- und Standort-Historie, aber keine Notizen. Sie heißen „{name} #2“, „{name} #3“ … – die Pflanze selbst wird zu „#1“, falls sie noch keine Nummer hat.",
+    duplicate_done: "{n} Kopien angelegt: {names}",
+    duplicate_done_one: "1 Kopie angelegt: {names}",
+    duplicate_invalid: "Bitte eine Anzahl zwischen 1 und 100 eingeben.",
     delete_confirm: "„{name}“ wirklich löschen?",
     delete_warning: "Phasen- und Standort-Historie, Notizen und das Stecklings-Protokoll gehen verloren. Das lässt sich nicht rückgängig machen.",
     delete_children_note: "Die {n} erfassten Stecklinge bleiben erhalten.",
@@ -222,6 +236,11 @@ const I18N = {
 };
 
 const INTEGRATION_URL = "/config/integrations/integration/grow_tracker";
+
+// Sorte ohne laufende Nummer: "Zombie Kush #3" → "Zombie Kush"
+function baseName(name) {
+  return String(name).replace(/ #\d+$/, "");
+}
 
 function esc(value) {
   return String(value ?? "")
@@ -497,13 +516,12 @@ class GrowTrackerPanel extends HTMLElement {
     const order = (p) => PHASES.indexOf(p.phase);
     const byName = (a, b) => a.localeCompare(b, undefined, { numeric: true });
 
-    // Stecklinge derselben Mutter in derselben Phase zu einer Gruppe zusammenfassen
+    // Gleichartige Pflanzen in derselben Phase zu einer Gruppe zusammenfassen
     const groups = new Map();
     const items = [];
     for (const p of plants) {
-      const mother = p.mother_id || p.mother_name;
-      if (p.origin === "cutting" && mother) {
-        const key = `${cardKey}|${mother}|${p.phase}`;
+      const key = this._groupKey(p, cardKey);
+      if (key) {
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(p);
       } else {
@@ -515,7 +533,7 @@ class GrowTrackerPanel extends HTMLElement {
       items.push(
         members.length === 1
           ? { phase: order(first), name: first.name, html: this._plantRow(first) }
-          : { phase: order(first), name: this._groupTitle(first), html: this._groupRow(key, members) }
+          : { phase: order(first), name: this._groupTitle(key, first), html: this._groupRow(key, members) }
       );
     }
     const rows = items
@@ -536,14 +554,29 @@ class GrowTrackerPanel extends HTMLElement {
     `;
   }
 
-  _groupTitle(cutting) {
+  _groupKey(p, cardKey) {
+    // Stecklinge: gleiche Mutter + Phase. Samenpflanzen: gleiche Sorte (ohne "#n"),
+    // Breeder/Cutter, Phänotyp + Phase. Mutterpflanzen werden nie gruppiert.
+    const mother = p.mother_id || p.mother_name;
+    if (p.origin === "cutting" && mother) return `${cardKey}|c|${mother}|${p.phase}`;
+    if (p.phase === "mother") return null;
+    return `${cardKey}|s|${baseName(p.name)}|${p.strain || ""}|${p.phenotype || ""}|${p.phase}`;
+  }
+
+  _isCuttingGroup(key) {
+    return key.split("|")[1] === "c";
+  }
+
+  _groupTitle(key, first) {
+    if (!this._isCuttingGroup(key)) return baseName(first.name);
     // Sorte der Mutter (aktueller Name, sonst der beim Steckling hinterlegte)
-    return this._plant(cutting.mother_id)?.name || cutting.mother_name || cutting.name;
+    return this._plant(first.mother_id)?.name || first.mother_name || first.name;
   }
 
   _groupRow(key, members) {
     const first = members[0];
     const expanded = this._expanded.has(key);
+    const cuttings = this._isCuttingGroup(key);
     const range = (values) => {
       const min = Math.min(...values);
       const max = Math.max(...values);
@@ -564,7 +597,11 @@ class GrowTrackerPanel extends HTMLElement {
         ${soonest ? `<div class="secondary small">${esc(this._harvestText(soonest))}</div>` : ""}`;
     }
 
-    const details = [this._t("cuttings", { n: members.length }), first.phenotype, first.strain]
+    const details = [
+      this._t(cuttings ? "cuttings" : "n_plants", { n: members.length }),
+      first.phenotype,
+      first.strain,
+    ]
       .filter(Boolean)
       .map(esc)
       .join(" · ");
@@ -582,7 +619,9 @@ class GrowTrackerPanel extends HTMLElement {
           title="${esc(this._t(expanded ? "collapse" : "expand"))}">
           <span class="dot" style="background:${PHASE_COLORS[first.phase]}"></span>
           <span class="plant-main">
-            <span class="plant-name">${esc(this._groupTitle(first))} <span class="count-badge">✂ ×${members.length}</span></span>
+            <span class="plant-name">${esc(this._groupTitle(key, first))} <span class="count-badge">${
+              cuttings ? "✂ " : ""
+            }×${members.length}</span></span>
             <span class="secondary small">${details}</span>
             ${extra}
           </span>
@@ -1136,7 +1175,10 @@ class GrowTrackerPanel extends HTMLElement {
       </div>
       <div class="status" id="status" role="status"></div>
       <div class="footer">
-        <button class="text-button" id="edit">${esc(this._t("edit"))}</button>
+        <div class="footer-left">
+          <button class="text-button" id="edit">${esc(this._t("edit"))}</button>
+          ${this._hass.user?.is_admin ? `<div id="duplicate-area"></div>` : ""}
+        </div>
         ${this._hass.user?.is_admin ? `<div id="delete-area"></div>` : ""}
       </div>
     `;
@@ -1150,6 +1192,65 @@ class GrowTrackerPanel extends HTMLElement {
     );
     forms.querySelector("#edit").addEventListener("click", () => this._navigate(INTEGRATION_URL));
     this._renderDeleteArea(false);
+    this._renderDuplicateArea(false);
+  }
+
+  _renderDuplicateArea(open) {
+    const area = this.shadowRoot.getElementById("duplicate-area");
+    const p = this._plant(this._selectedId);
+    if (!area || !p) return;
+
+    if (!open) {
+      area.innerHTML = `<button class="text-button" id="duplicate">${esc(this._t("duplicate"))}</button>`;
+      area.querySelector("#duplicate").addEventListener("click", () => this._renderDuplicateArea(true));
+      return;
+    }
+
+    area.innerHTML = `
+      <form class="duplicate-form" novalidate>
+        <label>${esc(this._t("duplicate_count"))}
+          <input type="number" name="count" value="1" min="1" max="100" required>
+        </label>
+        <p class="secondary small">${esc(this._t("duplicate_hint", { name: baseName(p.name) }))}</p>
+        <div class="confirm-buttons">
+          <button type="button" class="text-button" data-cancel>${esc(this._t("cancel"))}</button>
+          <button type="submit" class="primary">${esc(this._t("duplicate"))}</button>
+        </div>
+      </form>`;
+    const form = area.querySelector("form");
+    const input = form.querySelector("input");
+    input.focus();
+    input.select();
+    form.querySelector("[data-cancel]").addEventListener("click", () => this._renderDuplicateArea(false));
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const status = this.shadowRoot.getElementById("status");
+      const count = Number(input.value);
+      if (!Number.isInteger(count) || count < 1 || count > 100) {
+        status.className = "status error";
+        status.textContent = this._t("duplicate_invalid");
+        return;
+      }
+      form.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      try {
+        const result = await this._hass.callWS({
+          type: "grow_tracker/duplicate_plant",
+          plant_id: p.id,
+          count,
+        });
+        const names = result?.created || [];
+        status.className = "status ok";
+        status.textContent = `✓ ${this._t(names.length === 1 ? "duplicate_done_one" : "duplicate_done", {
+          n: names.length,
+          names: names.join(", "),
+        })}`;
+        this._renderDuplicateArea(false);
+      } catch (err) {
+        status.className = "status error";
+        status.textContent = err?.message || String(err);
+        form.querySelectorAll("button").forEach((b) => (b.disabled = false));
+      }
+    });
   }
 
   _renderDeleteArea(confirming) {
@@ -1501,6 +1602,10 @@ const STYLES = `
     margin-top: 8px;
   }
   .dialog .footer .text-button { margin-top: 0; }
+  .footer-left { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .duplicate-form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; padding: 4px 0 0 12px; }
+  .duplicate-form input { max-width: 120px; }
+  .duplicate-form p { margin: 0; }
   .dialog .danger-text { color: var(--error-color, #db4437); }
   .confirm {
     border: 1px solid var(--error-color, #db4437);
