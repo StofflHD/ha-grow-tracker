@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import Any
 
 import voluptuous as vol
@@ -11,6 +12,7 @@ from homeassistant.config_entries import (
     ConfigEntryState,
     ConfigFlow,
     ConfigFlowResult,
+    ConfigSubentry,
     ConfigSubentryData,
     ConfigSubentryFlow,
     SubentryFlowResult,
@@ -33,6 +35,7 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_AREA,
+    CONF_COUNT,
     CONF_FLOWER_WEEKS,
     CONF_LOCATION,
     CONF_LOCATION_TYPE,
@@ -59,6 +62,10 @@ from .const import (
     SUBENTRY_PLANT,
 )
 from .hub import async_propagate_to_cuttings
+
+COUNT_SELECTOR = NumberSelector(
+    NumberSelectorConfig(min=1, max=100, step=1, mode=NumberSelectorMode.BOX)
+)
 
 FLOWER_WEEKS_SELECTOR = NumberSelector(
     NumberSelectorConfig(min=4, max=16, step=1, mode=NumberSelectorMode.BOX)
@@ -233,6 +240,47 @@ class LocationSubentryFlow(ConfigSubentryFlow):
 class PlantSubentryFlow(ConfigSubentryFlow):
     """Pflanze hinzufügen / bearbeiten."""
 
+    @callback
+    def _async_create_batch(
+        self, entry: ConfigEntry, name: str, data: dict[str, Any], count: int
+    ) -> SubentryFlowResult:
+        """Mehrere gleiche Pflanzen anlegen ("<Sorte> #n"), Nummerierung fortsetzen.
+
+        Ein Subentry-Flow kann nur einen Eintrag erzeugen – daher werden alle direkt
+        angelegt, der Flow endet mit einer Bestätigung und es wird einmal neu geladen.
+        """
+        prefix = f"{name} #"
+        taken = [
+            int(sub.title[len(prefix) :])
+            for sub in entry.subentries.values()
+            if sub.subentry_type == SUBENTRY_PLANT
+            and sub.title.startswith(prefix)
+            and sub.title[len(prefix) :].isdigit()
+        ]
+        start = max(taken, default=0) + 1
+
+        hub = entry.runtime_data
+        hub.reload_pending = True
+        for number in range(start, start + count):
+            self.hass.config_entries.async_add_subentry(
+                entry,
+                ConfigSubentry(
+                    data=MappingProxyType(dict(data)),
+                    subentry_type=SUBENTRY_PLANT,
+                    title=f"{prefix}{number}",
+                    unique_id=None,
+                ),
+            )
+        self.hass.config_entries.async_schedule_reload(entry.entry_id)
+        return self.async_abort(
+            reason="plants_created",
+            description_placeholders={
+                "count": str(count),
+                "first": f"{prefix}{start}",
+                "last": f"{prefix}{start + count - 1}",
+            },
+        )
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
@@ -250,6 +298,7 @@ class PlantSubentryFlow(ConfigSubentryFlow):
         if user_input is not None:
             data = dict(user_input)
             name = data.pop(CONF_NAME).strip()
+            count = int(data.pop(CONF_COUNT, 1))
             data[CONF_FLOWER_WEEKS] = int(data[CONF_FLOWER_WEEKS])
             if (mother := mothers.get(data.get(CONF_MOTHER, ""))) is not None:
                 data[CONF_MOTHER_NAME] = mother.name
@@ -258,10 +307,13 @@ class PlantSubentryFlow(ConfigSubentryFlow):
                     data[CONF_STRAIN] = mother.strain
                 if not data.get(CONF_PHENOTYPE) and mother.phenotype:
                     data[CONF_PHENOTYPE] = mother.phenotype
-            return self.async_create_entry(title=name, data=data)
+            if count == 1:
+                return self.async_create_entry(title=name, data=data)
+            return self._async_create_batch(entry, name, data, count)
 
         fields: dict[Any, Any] = {
             vol.Required(CONF_NAME): TextSelector(),
+            vol.Required(CONF_COUNT, default=1): COUNT_SELECTOR,
             vol.Optional(CONF_STRAIN): TextSelector(),
             vol.Optional(CONF_PHENOTYPE): TextSelector(),
         }

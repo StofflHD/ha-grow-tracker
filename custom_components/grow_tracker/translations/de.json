@@ -73,6 +73,7 @@
           "title": "Neue Pflanze",
           "data": {
             "name": "Sorte",
+            "count": "Anzahl",
             "strain": "Breeder/Cutter",
             "phenotype": "Phänotyp",
             "mother": "Mutterpflanze (bei Stecklingen)",
@@ -82,6 +83,7 @@
             "flower_weeks": "Erwartete Blütedauer (Wochen)"
           },
           "data_description": {
+            "count": "Mehrere Pflanzen derselben Sorte auf einmal anlegen, z. B. für mehrere Samen. Sie heißen dann „Sorte #1“, „Sorte #2“ … (bestehende Nummern werden fortgesetzt).",
             "strain": "Bei Stecklingen leer lassen, um Breeder/Cutter der Mutter zu übernehmen.",
             "phenotype": "z. B. #3 oder Purple Pheno. Bei Stecklingen leer lassen, um den Phänotyp der Mutter zu übernehmen.",
             "mother": "Leer lassen bei Pflanzen aus Samen.",
@@ -102,6 +104,7 @@
       },
       "abort": {
         "no_locations": "Lege zuerst einen Standort an.",
+        "plants_created": "{count} Pflanzen angelegt: {first} bis {last}.",
         "not_loaded": "Grow Tracker ist nicht geladen.",
         "reconfigure_successful": "Pflanze wurde aktualisiert."
       }

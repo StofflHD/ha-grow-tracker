@@ -42,6 +42,7 @@ On *Settings → Devices & services → Grow Tracker* you find the buttons:
   | Field | Description |
   |---|---|
   | **Strain** | e.g. `Gelato #41` – becomes the device name |
+  | **Count** | default 1 – create several plants of the same strain at once (e.g. several seeds): they are named `Strain #1`, `Strain #2` …, numbering continues after existing plants of that strain |
   | **Breeder/Cutter** | optional |
   | **Phenotype** | optional, e.g. `Pheno #3` |
   | **Mother plant** | only shown if a plant is in phase *mother plant* – select it for cuttings |

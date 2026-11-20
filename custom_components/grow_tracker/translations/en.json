@@ -73,6 +73,7 @@
           "title": "New plant",
           "data": {
             "name": "Strain",
+            "count": "Count",
             "strain": "Breeder/Cutter",
             "phenotype": "Phenotype",
             "mother": "Mother plant (for cuttings)",
@@ -82,6 +83,7 @@
             "flower_weeks": "Expected flowering time (weeks)"
           },
           "data_description": {
+            "count": "Create several plants of the same strain at once, e.g. for several seeds. They are named \"Strain #1\", \"Strain #2\" … (existing numbers are continued).",
             "strain": "Leave empty for cuttings to inherit the mother's breeder/cutter.",
             "phenotype": "e.g. #3 or Purple Pheno. Leave empty for cuttings to inherit the mother's phenotype.",
             "mother": "Leave empty for plants grown from seed.",
@@ -102,6 +104,7 @@
       },
       "abort": {
         "no_locations": "Add a location first.",
+        "plants_created": "{count} plants created: {first} to {last}.",
         "not_loaded": "Grow Tracker is not loaded.",
         "reconfigure_successful": "Plant updated."
       }

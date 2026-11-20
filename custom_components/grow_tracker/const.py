@@ -35,6 +35,8 @@ CONF_STRAIN = "strain"
 CONF_PHENOTYPE = "phenotype"
 CONF_START_DATE = "start_date"
 CONF_FLOWER_WEEKS = "flower_weeks"
+# Anzahl gleicher Pflanzen beim Anlegen (wird nicht gespeichert)
+CONF_COUNT = "count"
 CONF_LOCATION = "location"
 CONF_PHASE = "phase"
 CONF_MOTHER = "mother"
