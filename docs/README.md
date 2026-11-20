@@ -20,7 +20,7 @@ The user interface is available in **English** and **German**.
 
 | Page | Content |
 |---|---|
-| [Installation](Installation.md) | Requirements, installation via HACS or manually, updates, removal |
+| [Installation](Installation.md) | Requirements, installation via the Marketplace, HACS or manually, updates, removal |
 | [Setup](Setup.md) | Setup wizard, adding and editing locations and plants |
 | [Sidebar Panel](Sidebar-Panel.md) | Overview, plant details, editing in the panel |
 | [Plants and Phases](Plants-and-Phases.md) | Plant fields, phases, phase and location history |

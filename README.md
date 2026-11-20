@@ -17,12 +17,15 @@ Document your grow in Home Assistant – from seed or cutting to curing – acro
 
 Requires Home Assistant **2025.6** or newer.
 
-1. HACS → **⋮ → Custom repositories**
-2. Repository `https://github.com/StofflHD/ha-grow-tracker`, type **Integration**
-3. Download **Grow Tracker** and restart Home Assistant
+With Home Assistant **2026.11** or newer (built-in Marketplace):
+
+1. *Settings → Marketplace* → **Add from link**
+2. GitHub link `https://github.com/StofflHD/ha-grow-tracker` → **Add**
+3. Install **Grow Tracker** and restart Home Assistant
 4. *Settings → Devices & services → Add integration → Grow Tracker*
 
-Manual installation and details: [Installation](https://github.com/StofflHD/ha-grow-tracker/blob/main/docs/Installation.md)
+Older Home Assistant versions (HACS) and manual installation:
+[Installation](https://github.com/StofflHD/ha-grow-tracker/blob/main/docs/Installation.md)
 
 ## Documentation
 
